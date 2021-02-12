@@ -1,0 +1,7 @@
+NAME
+  Hyperspace::vtkExtensions
+LIBRARY_NAME
+  vtkHyperspaceExtensions
+DEPENDS
+  VTK::CommonCore
+  VTK::RenderingOpenGL2

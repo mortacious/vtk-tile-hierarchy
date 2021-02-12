@@ -16,7 +16,7 @@ vtkStandardNewMacro(vtkOpenGLGridMapper);
 //----------------------------------------------------------------------------
 vtkOpenGLGridMapper::vtkOpenGLGridMapper()
 {
-  this->SetNumberOfInputPorts(0);
+  this->SetNumberOfInputPorts(1);
   this->StaticOn();
 }
 
@@ -155,7 +155,7 @@ void vtkOpenGLGridMapper::BuildBufferObjects(vtkRenderer* ren, vtkActor* vtkNotU
   this->VBOs->CacheDataArray("vertexMC", infinitePlane, cache, VTK_FLOAT);
   this->VBOs->BuildAllVBOs(cache);
 
-  vtkOpenGLCheckErrorMacro("failed after BuildBufferObjects");
+  //vtkOpenGLCheckErrorMacro("failed after BuildBufferObjects");
 
   this->VBOBuildTime.Modified();
 }

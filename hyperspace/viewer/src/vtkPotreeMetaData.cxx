@@ -19,11 +19,11 @@
     JSON_GET_EX(Type, Var, Data, Key, "missing " #Type " key: " Key)
 
 
-int vtkPotreeMetaData::ReadFromJson(const std::string &file_name) {
+void vtkPotreeMetaData::ReadFromJson(const std::string &file_name) {
     std::ifstream f(file_name.c_str());
     if(!f.good()) throw std::runtime_error(std::string("cannot open file: ") + file_name);
 
-    Json::CharReader reader;
+    Json::Reader reader;
     Json::Value data;
     if(!reader.parse(f, data, false)) {
         throw std::runtime_error(std::string("cannot parse meta data: ")
@@ -54,7 +54,7 @@ int vtkPotreeMetaData::ReadFromJson(const std::string &file_name) {
         std::string val;
         JSON_GET_EX(String, val, attr, i,
                     "invalid point attribute array entry");
-        std::size_t sz = sizeOf(val);
+        std::size_t sz = SizeOf(val);
         if (sz == 0)
             throw std::runtime_error("unsupported point attribute: " + val);
         point_attributes_.push_back(val);

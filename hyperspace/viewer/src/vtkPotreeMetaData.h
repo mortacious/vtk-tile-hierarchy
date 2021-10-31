@@ -7,6 +7,7 @@
 #include <vtkBoundingBox.h>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace fs=std::filesystem;
 
@@ -18,7 +19,7 @@ public:
         return point_count_;
     }
 
-    ReadFromJson(const std::string& file_name);
+    void ReadFromJson(const std::string& file_name);
     static size_t SizeOf(const std::string& attr);
 private:
     friend class vtkPotreeLoader;

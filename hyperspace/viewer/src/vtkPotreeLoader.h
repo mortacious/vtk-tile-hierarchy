@@ -7,8 +7,9 @@
 #include "vtkHyperspaceExtensionsModule.h" // For export macro
 #include <vtkSmartPointer.h>
 #include <vtkWrappingHints.h>
+#include <vtkDataSet.h>
 #include <vtkSetGet.h>
-#include <vtkStdString.h>
+#include <string>
 
 #include <memory>
 
@@ -18,17 +19,20 @@ class vtkPotreeMetaData;
 class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoader
 {
 public:
-    vtkPotreeLoader(const vtkStdString& path);
+    vtkPotreeLoader(const std::string& path);
     ~vtkPotreeLoader() = default;
 
-    vtkSmartPointer<vtkPotreeMapperNode> LoadHierarchy() const;
-    void LoadNodeData(vtkPotreeMapperNode* node, bool recursive = false) const;
+    vtkSmartPointer<vtkPotreeMapperNode> CreateRootNode() const;
 
-    static bool IsValid(const vtkStdString& path, vtkStdString& error_msg);
+    static bool IsValid(const std::string& path, std::string& error_msg);
 protected:
-    vtkStdString CreateFileName(const vtkStdString& name, const vtkStdString& extension);
+    friend class vtkPotreeMapperNode;
 
-    class vtkStdString Path;
+    void LoadNodeData(const vtkPotreeMapperNode& node, vtkDataSet* dataset) const;
+
+    vtkStdString CreateFileName(const std::string& name, const std::string& extension);
+
+    std::string Path;
     std::unique_ptr<vtkPotreeMetaData> MetaData;
 };
 

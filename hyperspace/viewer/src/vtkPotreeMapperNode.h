@@ -25,21 +25,22 @@
 
 #pragma once
 #include <vtkBoundingBox.h>
-#include <vtkObject.h>
+#include <vtkSmartPointer.h>
 #include <memory>
 #include <mutex>
 #include <array>
 
 class vtkMapper;
-class vtkWindow;
+class vtkPotreeLoader;
+class vtkPolyData;
+class vtkRenderer;
+class vtkActor;
 
-class vtkPotreeMapperNode: public vtkObject
+class vtkPotreeMapperNode
 {
 public:
     vtkPotreeMapperNode(const std::string& name,
                         const vtkBoundingBox& bounding_box,
-                        vtkWindow* window,
-                        vtkMapper* mapper,
                         const std::weak_ptr<vtkPotreeMapperNode> parent = std::weak_ptr<vtkPotreeMapperNode>());
     ~vtkPotreeMapperNode();
 
@@ -64,24 +65,26 @@ public:
         return Children;
     }
 
+    void LoadData(bool recursive = false);
+
     bool IsLoaded() const {
         return Loaded;
     }
+
+    void Unload(bool recursive = false);
 
     bool GetVisible() const {
         return Visible;
     }
 
-    void SetVisible(bool visible, bool recursive = false);
-    void Unload(bool recursive = false);
+    void SetVisibility(bool visible, bool recursive = false);
 
-    vtkMapper* GetMapper() {
-        return Mapper;
-    }
+    void Render(vtkRenderer* ren, vtkActor* a);
 protected:
-    vtkMapper* Mapper;
-    vtkWindow* Window;
-    vtkPolyData* Data;
+    vtkPolyData* Dataset;
+    vtkMapper* MapperTemplate;
+    vtkNew<vtkMapper> Mapper;
+    vtkPotreeLoader* Loader;
 private:
     mutable std::mutex Mutex;
     std::string Name;
@@ -90,5 +93,4 @@ private:
     bool Loaded;
     bool Visible;
     std::array<std::shared_ptr<vtkPotreeMapperNode>, 8> Children;
-    std::string UniqueId;
 };

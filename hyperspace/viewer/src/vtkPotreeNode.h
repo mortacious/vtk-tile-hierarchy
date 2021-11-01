@@ -36,13 +36,17 @@ class vtkPolyData;
 class vtkRenderer;
 class vtkActor;
 
-class vtkPotreeMapperNode
+
+class vtkPotreeNode;
+using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
+
+class vtkPotreeNode
 {
 public:
-    vtkPotreeMapperNode(const std::string& name,
+    vtkPotreeNode(const std::string& name,
                         const vtkBoundingBox& bounding_box,
-                        const std::weak_ptr<vtkPotreeMapperNode> parent = std::weak_ptr<vtkPotreeMapperNode>());
-    ~vtkPotreeMapperNode();
+                        const std::weak_ptr<vtkPotreeNode> parent = std::weak_ptr<vtkPotreeNode>());
+    ~vtkPotreeNode();
 
     const std::string& GetName() const {
         return Name;
@@ -57,40 +61,30 @@ public:
         return BoundingBox;
     }
 
-    const std::weak_ptr<vtkPotreeMapperNode>& GetParent() const {
+    const std::weak_ptr<vtkPotreeNode>& GetParent() const {
         return Parent;
     }
 
-    const std::array<std::shared_ptr<vtkPotreeMapperNode>, 8>& GetChildren() const {
+    const std::array<vtkPotreeNodePtr, 8>& GetChildren() const {
         return Children;
     }
-
-    void LoadData(bool recursive = false);
 
     bool IsLoaded() const {
         return Loaded;
     }
 
-    void Unload(bool recursive = false);
-
-    bool GetVisible() const {
-        return Visible;
-    }
-
-    void SetVisibility(bool visible, bool recursive = false);
-
     void Render(vtkRenderer* ren, vtkActor* a);
+
 protected:
-    vtkPolyData* Dataset;
-    vtkMapper* MapperTemplate;
-    vtkNew<vtkMapper> Mapper;
-    vtkPotreeLoader* Loader;
-private:
+    friend class vtkPotreeLoader;
+
     mutable std::mutex Mutex;
     std::string Name;
     vtkBoundingBox BoundingBox;
     std::weak_ptr<vtkPotreeMapperNode> Parent;
+    std::array<vtkPotreeNodePtr, 8> Children;
     bool Loaded;
-    bool Visible;
-    std::array<std::shared_ptr<vtkPotreeMapperNode>, 8> Children;
+
+    // This is set dynamically
+    vtkSmartPointer<vtkMapper> Mapper;
 };

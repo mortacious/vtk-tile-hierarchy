@@ -5,16 +5,14 @@
 #pragma once
 
 #include "vtkHyperspaceExtensionsModule.h" // For export macro
-#include <vtkSmartPointer.h>
-#include <vtkWrappingHints.h>
-#include <vtkDataSet.h>
-#include <vtkSetGet.h>
 #include <string>
 
 #include <memory>
 
-class vtkPotreeMapperNode;
+class vtkPotreeNode;
+using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
 class vtkPotreeMetaData;
+class vtkBoundingBox;
 
 class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoader
 {
@@ -22,16 +20,21 @@ public:
     vtkPotreeLoader(const std::string& path);
     ~vtkPotreeLoader() = default;
 
-    vtkSmartPointer<vtkPotreeMapperNode> CreateRootNode() const;
+    vtkPotreeNodePtr LoadHierarchy();
 
-    static bool IsValid(const std::string& path, std::string& error_msg);
+    void LoadNodeData(vtkPotreeNodePtr& node);
+
+    void UnloadNode(vtkPotreeNodePtr& node);
+
+    static bool IsValidPotree(const std::string& path, std::string& error_msg);
 protected:
-    friend class vtkPotreeMapperNode;
+    friend class vtkPotreeNode;
 
-    void LoadNodeData(const vtkPotreeMapperNode& node, vtkDataSet* dataset) const;
+    void LoadNodeHierarchy(const vtkPotreeNodePtr& root_node) const;
 
-    vtkStdString CreateFileName(const std::string& name, const std::string& extension);
-
+    std::string CreateFileName(const std::string& name, const std::string& extension) const;
+    static vtkBoundingBox CreateChildBB(const vtkBoundingBox& parent,
+                              int index);
     std::string Path;
     std::unique_ptr<vtkPotreeMetaData> MetaData;
 };

@@ -4,7 +4,7 @@
 
 #include "vtkPotreeLoaderThread.h"
 #include "vtkPotreeLoader.h"
-#include "vtkPotreeMapperNode.h"
+#include "vtkPotreeNode.h"
 
 vtkPotreeLoaderThread::vtkPotreeLoaderThread(const vtkPotreeLoader *loader)
     : Loader(loader),

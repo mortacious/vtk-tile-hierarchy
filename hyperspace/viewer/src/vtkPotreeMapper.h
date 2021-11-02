@@ -5,11 +5,24 @@
 #pragma once
 #include <vtkSmartPointer.h>
 #include <vtkMapper.h>
+#include <vtkVector.h>
+#include <vtkQuaternion.h>
+#include <vtkMatrix4x4.h>
+#include <vtkCallbackCommand.h>
+#include <memory>
 #include "vtkHyperspaceExtensionsModule.h" // For export macro
 
 class vtkRenderer;
 class vtkActor;
-class vtkPotreeMapperInternals;
+class vtkWindow;
+class vtkCamera;
+class vtkPotreeLoader;
+class vtkPotreeNode;
+using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
+class vtkPotreeLoaderThread;
+
+class CheckVisibilityCallback;
+class ReRenderCallback;
 
 class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeMapper : public vtkMapper
 {
@@ -17,6 +30,18 @@ public:
     static vtkPotreeMapper* New();
     vtkTypeMacro(vtkPotreeMapper, vtkMapper);
     void PrintSelf(ostream& os, vtkIndent indent) override;
+
+
+    void SetLoader(vtkPotreeLoader* loader);
+    [[nodiscard]] vtkPotreeLoader* GetLoader() const {
+        return Loader;
+    }
+
+    vtkSetMacro(PointBudget, std::size_t);
+    vtkGetMacro(PointBudget, std::size_t);
+
+    vtkSetMacro(MinimumNodeSize, float);
+    vtkGetMacro(MinimumNodeSize, float);
 
     /**
      * Standard method for rendering a mapper. This method will be
@@ -31,43 +56,48 @@ public:
     double* GetBounds() VTK_SIZEHINT(6) override;
     void GetBounds(double bounds[6]) override { this->Superclass::GetBounds(bounds); }
 
-    //@{
-    /**
-     * Set/Get the mapper used to render the pieces.
-     */
-    vtkSetMacro(PieceMapper, vtkMapper*);
-    vtkGetMacro(PieceMapper, vtkMapper*);
+    void ReleaseGraphicsResources(vtkWindow* win) override;
 protected:
     vtkPotreeMapper();
-    ~vtkPotreeMapper() = default;
+    ~vtkPotreeMapper() override = default;
 
     /**
      * Need to loop over the hierarchy to compute bounds
      */
     void ComputeBounds();
 
-    virtual vtkMapper* MakeMapper();
+    void OnNodeLoaded();
 
     /**
-     * Time stamp for computation of bounds.
+     * Calculate the priority of displaying a node
+     * @param node
+     * @param camera
+     * @return
      */
-    vtkTimeStamp BoundsMTime;
+    float GetPriority(const vtkPotreeNodePtr& node, vtkCamera* camera) const;
 
-    /**
-     * These are the internal polydata mapper that do the
-     * rendering. We save then so that they can keep their
-     * display lists.
-     */
-    vtkPotreeMapperInternals* Internal;
-
+    bool BoundsInitialized;
+    std::atomic_bool ForceUpdate;
+    std::size_t PointBudget;
+    float MinimumNodeSize;
     /**
      * Time stamp for when we need to update the
      * internal mappers
      */
     vtkTimeStamp InternalMappersBuildTime;
 
-    vtkMapper* PieceMapper;
+    vtkSmartPointer<vtkPotreeLoader> Loader;
+    vtkSmartPointer<vtkRenderer> Renderer;
+    vtkSmartPointer<vtkCamera> Camera;
+    vtkPotreeNodePtr RootNode;
+    std::shared_ptr<vtkPotreeLoaderThread> LoaderThread;
+
+    vtkNew<CheckVisibilityCallback> CheckVisibilityObserver;
+    vtkNew<ReRenderCallback> ReRenderObserver;
 private:
+    friend class CheckVisibilityCallback;
+    friend class ReRenderCallback;
+
     vtkPotreeMapper(const vtkPotreeMapper&) = delete;
     void operator=(const vtkPotreeMapper&) = delete;
 };

@@ -11,15 +11,16 @@
 #include <queue>
 
 class vtkPotreeLoader;
-class vtkPotreeMapperNode;
+class vtkPotreeNode;
+using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
 
 class vtkPotreeLoaderThread {
-    explicit vtkPotreeLoaderThread(const vtkPotreeLoader* loader);
+public:
+    explicit vtkPotreeLoaderThread(vtkPotreeLoader* loader);
     ~vtkPotreeLoaderThread();
     void UnscheduleAll();
-    void ScheduleForLoading(vtkPotreeMapperNode* node);
+    void ScheduleForLoading(vtkPotreeNodePtr& node);
     void SetNodeLoadedCallBack(const std::function<void()>& func);
-
 private:
     void Run();
 
@@ -30,6 +31,6 @@ private:
     std::function<void()> Func;
     std::mutex Mutex;
     std::condition_variable Cond;
-    std::queue<vtkPotreeMapperNode*> NeedToLoad;
+    std::queue<vtkPotreeNodePtr> NeedToLoad;
 };
 

@@ -6,10 +6,11 @@
 #include "vtkPotreeLoader.h"
 #include "vtkPotreeNode.h"
 
-vtkPotreeLoaderThread::vtkPotreeLoaderThread(const vtkPotreeLoader *loader)
-    : Loader(loader),
-      Running(true),
-      Thread(std::bind(&vtkPotreeLoaderThread::Run, this)) {}
+vtkPotreeLoaderThread::vtkPotreeLoaderThread(vtkPotreeLoader *loader)
+    : Running(true),
+      Thread([this] { Run(); }) {
+    Loader.TakeReference(loader);
+}
 
 vtkPotreeLoaderThread::~vtkPotreeLoaderThread() {
     std::unique_lock<std::mutex> lock{Mutex};
@@ -29,26 +30,26 @@ void vtkPotreeLoaderThread::SetNodeLoadedCallBack(const std::function<void()> &f
     Func = func;
 }
 
-void vtkPotreeLoaderThread::ScheduleForLoading(vtkPotreeMapperNode *node) {
+void vtkPotreeLoaderThread::ScheduleForLoading(vtkPotreeNodePtr& node) {
     std::lock_guard<std::mutex> lock{Mutex};
     NeedToLoad.push(node);
     Cond.notify_one();
 }
 
 void vtkPotreeLoaderThread::Run() {
-    std::unique_lock<std::mutex> lock{mutex_};
+    std::unique_lock<std::mutex> lock{Mutex};
     while(Running) {
         while(NeedToLoad.empty()) {
             Cond.wait(lock);
             if(!Running) return;
         }
 
-        vtkPotreeMapperNode* node = NeedToLoad.front();
+        auto node = NeedToLoad.front();
         NeedToLoad.pop();
         if(node->IsLoaded()) continue; // skip already loaded nodes
 
         lock.unlock();
-        Loader->LoadNodeData(node);
+        Loader->LoadNode(node);
         if(Func) Func();
         lock.lock();
     }

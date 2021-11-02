@@ -61,11 +61,15 @@ public:
         return BoundingBox;
     }
 
+    std::size_t GetPointCount() const {
+        return PointCount;
+    }
+
     const std::weak_ptr<vtkPotreeNode>& GetParent() const {
         return Parent;
     }
 
-    const std::array<vtkPotreeNodePtr, 8>& GetChildren() const {
+    std::array<vtkPotreeNodePtr, 8>& GetChildren() {
         return Children;
     }
 
@@ -74,17 +78,30 @@ public:
     }
 
     void Render(vtkRenderer* ren, vtkActor* a);
-
 protected:
     friend class vtkPotreeLoader;
 
     mutable std::mutex Mutex;
     std::string Name;
     vtkBoundingBox BoundingBox;
-    std::weak_ptr<vtkPotreeMapperNode> Parent;
+    std::weak_ptr<vtkPotreeNode> Parent;
     std::array<vtkPotreeNodePtr, 8> Children;
     bool Loaded;
 
     // This is set dynamically
+    std::size_t PointCount;
     vtkSmartPointer<vtkMapper> Mapper;
 };
+
+//namespace std {
+//
+//    template <>
+//    struct hash<vtkPotreeNodePtr>
+//    {
+//        std::size_t operator()(const vtkPotreeNodePtr& k) const
+//        {
+//            return std::hash<std::string>()(k->GetName());
+//        }
+//    };
+//
+//}

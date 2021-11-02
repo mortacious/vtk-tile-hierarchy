@@ -4,6 +4,7 @@
 
 #pragma once
 #include <vtkSmartPointer.h>
+#include <vtkWrappingHints.h>
 #include <thread>
 #include <condition_variable>
 #include <mutex>
@@ -14,7 +15,7 @@ class vtkPotreeLoader;
 class vtkPotreeNode;
 using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
 
-class vtkPotreeLoaderThread {
+VTK_WRAPEXCLUDE class vtkPotreeLoaderThread {
 public:
     explicit vtkPotreeLoaderThread(vtkPotreeLoader* loader);
     ~vtkPotreeLoaderThread();

@@ -47,6 +47,14 @@ bool vtkPotreeLoader::IsValidPotree(const std::string& path, std::string& error_
     return true;
 }
 
+void vtkPotreeLoader::SetTemplateMapper(vtkMapper *mapper) {
+    MapperTemplate.TakeReference(mapper);
+}
+
+vtkMapper * vtkPotreeLoader::GetTemplateMapper() {
+    return MapperTemplate.Get();
+}
+
 std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::string &extension) const {
     fs::path octree_dir = MetaData->cloud_path_ / MetaData->octree_dir_;
     fs::path result;
@@ -279,5 +287,8 @@ void vtkPotreeLoader::UnloadNode(vtkPotreeNodePtr &node, bool recursive) {
             }
         }
     }
+}
 
+bool vtkPotreeLoader::IsCached(vtkPotreeNodePtr &node) const {
+    return Cache.exist(node);
 }

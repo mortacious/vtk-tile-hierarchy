@@ -33,9 +33,7 @@ public:
 
 
     void SetLoader(vtkPotreeLoader* loader);
-    [[nodiscard]] vtkPotreeLoader* GetLoader() const {
-        return Loader;
-    }
+    vtkPotreeLoader* GetLoader();
 
     vtkSetMacro(PointBudget, std::size_t);
     vtkGetMacro(PointBudget, std::size_t);

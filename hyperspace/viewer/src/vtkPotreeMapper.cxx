@@ -157,7 +157,11 @@ void vtkPotreeMapper::SetLoader(vtkPotreeLoader *loader) {
     LoaderThread = std::make_shared<vtkPotreeLoaderThread>(Loader.GetPointer());
     LoaderThread->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
     BoundsInitialized = false;
-    RootNode.reset();
+    RootNode = Loader->LoadHierarchy();
+}
+
+vtkPotreeLoader * vtkPotreeMapper::GetLoader() {
+    return Loader;
 }
 
 void vtkPotreeMapper::ComputeBounds() {
@@ -191,6 +195,7 @@ void vtkPotreeMapper::OnNodeLoaded() {
 
 void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
     ForceUpdate = false;
+
     if(!Renderer || Renderer.Get() != ren) {
         if(Renderer) {
             Renderer->GetRenderWindow()->GetInteractor()->RemoveObserver(ReRenderObserver);
@@ -248,7 +253,7 @@ void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
                     Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
                 }
             } else {
-                LoaderThread->ScheduleForLoading(node)
+                LoaderThread->ScheduleForLoading(node);
             }
         }
     }

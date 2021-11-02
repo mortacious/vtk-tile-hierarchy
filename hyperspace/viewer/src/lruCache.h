@@ -49,7 +49,7 @@ public:
         }
         item_list_.push_front(make_pair(key, val));
         item_map_.insert(make_pair(key, item_list_.begin()));
-        cache_size_ += func_(key, static_cast<const vtkSmartPointer<vtkMapper>>(val));
+        cache_size_ += func_(key, val);
         clean();
     };
 
@@ -61,7 +61,7 @@ public:
         return cache_size_;
     }
 
-    bool exist(const KEY_T &key){
+    bool exist(const KEY_T &key) const {
         return (item_map_.count(key) > 0);
     };
 

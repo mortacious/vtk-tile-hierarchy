@@ -32,8 +32,12 @@ void vtkPotreeLoaderThread::SetNodeLoadedCallBack(const std::function<void()> &f
 
 void vtkPotreeLoaderThread::ScheduleForLoading(vtkPotreeNodePtr& node) {
     std::lock_guard<std::mutex> lock{Mutex};
-    NeedToLoad.push(node);
-    Cond.notify_one();
+    if(Loader->IsCached(node)) {
+        Loader->LoadNode(node); // This will be very quick
+    } else {
+        NeedToLoad.push(node);
+        Cond.notify_one();
+    }
 }
 
 void vtkPotreeLoaderThread::Run() {

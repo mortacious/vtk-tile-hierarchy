@@ -7,6 +7,7 @@
 #include "vtkHyperspaceExtensionsModule.h" // For export macro
 #include "lruCache.h"
 #include <string>
+#include <vtkWrappingHints.h>
 #include <vtkSmartPointer.h>
 #include <vtkObject.h>
 #include <memory>
@@ -29,11 +30,13 @@ public:
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
     void LoadMetaData();
-    vtkPotreeNodePtr LoadHierarchy();
+    VTK_WRAPEXCLUDE vtkPotreeNodePtr LoadHierarchy();
 
-    void LoadNode(vtkPotreeNodePtr& node, bool recursive = false);
+    VTK_WRAPEXCLUDE void LoadNode(vtkPotreeNodePtr& node, bool recursive = false);
 
-    void UnloadNode(vtkPotreeNodePtr& node, bool recursive = false);
+    VTK_WRAPEXCLUDE void UnloadNode(vtkPotreeNodePtr& node, bool recursive = false);
+
+    VTK_WRAPEXCLUDE bool IsCached(vtkPotreeNodePtr& node) const;
 
     void SetPath(const std::string& path) {
         Path = path;
@@ -43,13 +46,9 @@ public:
         return Path;
     }
 
-    void SetTemplateMapper(vtkMapper* mapper) {
-        MapperTemplate.TakeReference(mapper);
-    }
+    void SetTemplateMapper(vtkMapper* mapper);
 
-    vtkMapper* GetTemplateMapper() const {
-        return MapperTemplate;
-    }
+    vtkMapper* GetTemplateMapper();
 
     void SetCacheSize(size_t cs) {
         Cache.cache_size(cs);

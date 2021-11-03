@@ -80,8 +80,9 @@ public:
     // Here we Create a vtkCallbackCommand and reimplement it.
     void Execute(vtkObject* caller, unsigned long evId, void*) override
     {
+        //std::cout << "Camera moved" << std::endl;
         // Note the use of reinterpret_cast to cast the caller to the expected type.
-        auto camera = reinterpret_cast<vtkCamera*>(caller);
+        auto camera = Mapper->Camera;//reinterpret_cast<vtkCamera*>(caller);
         vtkVector3d camera_position;
         camera->GetPosition(camera_position.GetData());
         vtkQuaterniond camera_orientation(camera->GetOrientationWXYZ());
@@ -90,7 +91,11 @@ public:
 
         vtkVector3d camera_position_difference;
         vtkMath::Subtract(camera_position.GetData(), LastPosition.GetData(), camera_position_difference.GetData());
-        if (!is_different(projection_matrix, LastProjection)
+        bool projection_different = true;
+        if(LastProjection) {
+            projection_different = is_different(projection_matrix, LastProjection);
+        }
+        if (!projection_different
             && camera_position_difference.Norm() < 0.01f
             && (camera_orientation - LastOrientation).Norm() < 0.01f)
             return;
@@ -98,6 +103,7 @@ public:
         LastOrientation = camera_orientation;
         LastProjection = projection_matrix;
         if(Mapper->Renderer)
+            //std::cout << "Re-Rendering due to moved camera" << std::endl;
             Mapper->Renderer->GetRenderWindow()->Render(); // force a render
     }
     CheckVisibilityCallback(): Mapper(nullptr)
@@ -122,6 +128,7 @@ public:
         // Note the use of reinterpret_cast to cast the caller to the expected type.
         if (vtkCommand::TimerEvent == evId) {
             if(Mapper->ForceUpdate && Mapper->Renderer) {
+                //std::cout << "Re-rendering " << std::endl;
                 Mapper->Renderer->GetRenderWindow()->Render(); // force a render
             }
         }
@@ -157,6 +164,7 @@ void vtkPotreeMapper::SetLoader(vtkPotreeLoader *loader) {
     LoaderThread = std::make_shared<vtkPotreeLoaderThread>(Loader.GetPointer());
     LoaderThread->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
     BoundsInitialized = false;
+    std::cout << "Parsing Hierarchy" << std::endl;
     RootNode = Loader->LoadHierarchy();
 }
 
@@ -175,7 +183,7 @@ void vtkPotreeMapper::ComputeBounds() {
 
 void vtkPotreeMapper::ReleaseGraphicsResources(vtkWindow* win)
 {
-    Loader->UnloadNode(RootNode, true);
+    //Loader->UnloadNode(RootNode, true);
 }
 
 double* vtkPotreeMapper::GetBounds()
@@ -190,10 +198,12 @@ void vtkPotreeMapper::PrintSelf(ostream &os, vtkIndent indent) {
 }
 
 void vtkPotreeMapper::OnNodeLoaded() {
+    //std::cout << "New node loaded" << std::endl;
     ForceUpdate = true;
 }
 
 void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
+    //std::cout << "Rendering" << std::endl;
     ForceUpdate = false;
 
     if(!Renderer || Renderer.Get() != ren) {
@@ -203,18 +213,19 @@ void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
         Renderer.TakeReference(ren);
         Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::TimerEvent, ReRenderObserver);
         Renderer->GetRenderWindow()->GetInteractor()->CreateRepeatingTimer(100); // Check if nodes have been loaded 10 times a second
+        Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::EndInteractionEvent, CheckVisibilityObserver);
     }
 
     if(Camera.Get() != ren->GetActiveCamera()) {
-        if(Camera) {
-            Camera->RemoveObserver(CheckVisibilityObserver);
-        }
+        //if(Camera) {
+        //    Camera->RemoveObserver(CheckVisibilityObserver);
+        //}
         Camera.TakeReference(ren->GetActiveCamera());
-        Camera->AddObserver(vtkCommand::ModifiedEvent, CheckVisibilityObserver);
+        //Camera->AddObserver(vtkCommand::ModifiedEvent, CheckVisibilityObserver);
     }
 
     if(Renderer->GetRenderWindow()->GetActualSize()[1] < 10) {
-        return; // Do not render of very small screens
+        return; // Do not render very small screens
     }
 
     PriorityQueue<vtkPotreeNodePtr, float> process_queue;
@@ -222,41 +233,50 @@ void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
     std::size_t remaining_points = PointBudget;
     auto cam = Renderer->GetActiveCamera();
     double aspect_ratio = ren->GetTiledAspectRatio();
-    float size_per_pixel = std::tan(vtkMath::RadiansFromDegrees(cam->GetViewAngle())) / Renderer->GetRenderWindow()->GetActualSize()[1];
+//    float size_per_pixel = std::tan(vtkMath::RadiansFromDegrees(cam->GetViewAngle())) / Renderer->GetRenderWindow()->GetActualSize()[1];
 
-    vtkSmartPointer<vtkMatrix4x4> projection_matrix;
-    projection_matrix.TakeReference(cam->GetProjectionTransformMatrix(Renderer));
-    float z_scale = std::sqrt(projection_matrix->GetElement(0,0) * projection_matrix->GetElement(0,0)
-                              + projection_matrix->GetElement(1, 0) * projection_matrix->GetElement(1, 0)
-                              + projection_matrix->GetElement(2, 0) * projection_matrix->GetElement(2, 0));
+//    vtkSmartPointer<vtkMatrix4x4> projection_matrix;
+//    projection_matrix.TakeReference(cam->GetProjectionTransformMatrix(Renderer));
+//    float z_scale = std::sqrt(projection_matrix->GetElement(0,0) * projection_matrix->GetElement(0,0)
+//                              + projection_matrix->GetElement(1, 0) * projection_matrix->GetElement(1, 0)
+//                              + projection_matrix->GetElement(2, 0) * projection_matrix->GetElement(2, 0));
     while(!process_queue.empty()) {
         auto node = process_queue.top();
         process_queue.pop();
-        auto bb = node->GetBoundingBox();
+//        auto bb = node->GetBoundingBox();
         if(intersect(cam, node->GetBoundingBox(), aspect_ratio) != OUTSIDE_FRUSTUM) {
+            //std::cout << "Intersected node " << node->GetName() << std::endl;
             if(node->IsLoaded()) {
-                if(node->GetPointCount() != 0 && node->GetPointCount() <= remaining_points) {
+                if(node->GetPointCount() <= remaining_points) {
                     remaining_points -= node->GetPointCount();
+                    std::cout << "Rendering node r" << node->GetName() << " with " << node->GetPointCount() << " points. Budget remaining: " << remaining_points << std::endl;
                     node->Render(ren, a); // Render this node!
                     for(auto& child: node->GetChildren()) {
                         if(child) {
                             float p = GetPriority(node, cam);
-                            if(p>0)
-                            {
+                            if(p > 0) {
                                 process_queue.push(child, p);
-                            } else {
+                            } else if(child->IsLoaded()) {
+                                std::cout << "Unloading node " << child->GetName() << " with " << child->GetPointCount() << " points due to low visibility of " << p << std::endl;
                                 Loader->UnloadNode(child, true); // remove this child and all nodes below because they are too small
                             }
                         }
                     }
                 } else {
+                    std::cout << "Unloading node r" << node->GetName() << " with " << node->GetPointCount() << " points due to point budget" << std::endl;
                     Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
                 }
             } else {
+                std::cout << "Scheduling node r" << node->GetName() << " for loading" << std::endl;
                 LoaderThread->ScheduleForLoading(node);
             }
+        } else {
+            std::cout << "Unloading node r" << node->GetName() << " with " << node->GetPointCount() << " points because it is outside the frustum" << std::endl;
+            Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
+
         }
     }
+    std::cout << "--------------------------------------Rendering Done" << std::endl;
 }
 
 

@@ -10,12 +10,14 @@
 #include <mutex>
 #include <functional>
 #include <queue>
+#include "vtkHyperspaceExtensionsModule.h" // For export macro
+
 
 class vtkPotreeLoader;
 class vtkPotreeNode;
 using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
 
-VTK_WRAPEXCLUDE class vtkPotreeLoaderThread {
+VTK_WRAPEXCLUDE class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoaderThread {
 public:
     explicit vtkPotreeLoaderThread(vtkPotreeLoader* loader);
     ~vtkPotreeLoaderThread();
@@ -27,11 +29,12 @@ private:
 
     vtkSmartPointer<vtkPotreeLoader> Loader;
     bool Running;
-    std::thread Thread;
 
     std::function<void()> Func;
     std::mutex Mutex;
     std::condition_variable Cond;
     std::queue<vtkPotreeNodePtr> NeedToLoad;
+    std::thread Thread;
+
 };
 

@@ -11,6 +11,8 @@
 #include <vtkPointData.h>
 #include <vtkMapper.h>
 #include <vtkPolyDataMapper.h>
+#include <vtkCellArray.h>
+#include <vtkIdTypeArray.h>
 #include <filesystem>
 #include <queue>
 #include <array>
@@ -19,20 +21,25 @@
 
 namespace fs=std::filesystem;
 
+vtkStandardNewMacro(vtkPotreeLoader);
+
+
 size_t PotreeNodeSize::operator()(const vtkPotreeNodePtr &k, const std::pair<vtkSmartPointer<vtkMapper>, size_t> &v) const {
     return k->GetPointCount();
 }
 
 vtkPotreeLoader::vtkPotreeLoader()
-    : Path(""), Cache(20000000)
+    : Path(""), Cache(5000000)
 {
+    std::cout << "Cache size on init is " << Cache.cache_size() << " num entries " << Cache.num_entries() << std::endl;
+
     MapperTemplate = vtkSmartPointer<vtkPolyDataMapper>::New();
 }
 
 bool vtkPotreeLoader::IsValidPotree(const std::string& path, std::string& error_msg) {
     fs::path p = {path.c_str()};
     error_msg.clear();
-    if(fs::is_directory(p)) {
+    if(!fs::is_directory(p)) {
         error_msg = "not an existing folder";
         return false;
     }
@@ -70,11 +77,13 @@ std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::
 }
 
 void vtkPotreeLoader::LoadMetaData() {
+    std::cout << "Loading Metadata from " << Path << std::endl;
     std::string error_msg;
     if(!IsValidPotree(Path, error_msg)) throw std::runtime_error(error_msg);
     auto cloud_file = fs::path(Path.c_str()) / "cloud.js";
     MetaData = std::make_unique<vtkPotreeMetaData>();
     MetaData->ReadFromJson(cloud_file.string());
+    std::cout << "Loaded Metadata. Point Count: " << MetaData->point_count_ << std::endl;
 }
 
 vtkPotreeNodePtr vtkPotreeLoader::LoadHierarchy() {
@@ -140,7 +149,7 @@ vtkBoundingBox vtkPotreeLoader::CreateChildBB(const vtkBoundingBox &parent, int 
     if(index & 2)
         min[1] += half_size[1];
     else
-        min[1] -= half_size[1];
+        max[1] -= half_size[1];
 
     if(index & 4)
         min[0] += half_size[0];
@@ -151,13 +160,19 @@ vtkBoundingBox vtkPotreeLoader::CreateChildBB(const vtkBoundingBox &parent, int 
 }
 
 void vtkPotreeLoader::LoadNode(vtkPotreeNodePtr &node, bool recursive) {
+    std::unique_lock<std::mutex> lock{node->Mutex};
+
     if(Cache.exist(node)) {
         auto val = Cache.get(node);
         node->Mapper = val.first;
         node->PointCount = val.second;
+        std::cout << "Restoring node r" << node->GetName() << "with " << node->GetPointCount() << " points from cache";
+        //std::cout << "Cached node has " << node->PointCount << " points" << std::endl;
         node->Loaded = true;
         Cache.erase(node); // Remove the node from cache as long as it is needed by the mapper
+        lock.unlock();
     } else {
+        lock.unlock();
         LoadNodeFromFile(node);
     }
     // recursively load the nodes below
@@ -173,6 +188,7 @@ void vtkPotreeLoader::LoadNode(vtkPotreeNodePtr &node, bool recursive) {
 
 void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
     fs::path bin_file = CreateFileName(node->GetName(), ".bin");
+    //std::cout << "Loading node data from file " << bin_file.string() << std::endl;
     if (!fs::is_regular_file(bin_file))
     {
         throw std::runtime_error(std::string("file not found: ") + bin_file.string());
@@ -190,9 +206,11 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
         throw std::runtime_error(std::string("failed to read file: ") + bin_file.string());
     }
     std::size_t point_count = data.size() / MetaData->point_byte_size_;
+    //std::cout << "Point count to load " << point_count << std::endl;
     if (point_count == 0)
     {
-        std::cerr << "empty node: " << node->GetName() << std::endl;
+        std::cout << "Got empty node: r" << node->GetName() << std::endl;
+        throw std::runtime_error("Empty node");
         std::lock_guard<std::mutex> lock{node->Mutex};
         node->Mapper = nullptr;
         node->PointCount = 0;
@@ -210,6 +228,7 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
     node->BoundingBox.GetMinPoint(translate.GetData());
 
     for (const std::string& attr : MetaData->point_attributes_) {
+        //std::cout << "Point attribute " << attr << std::endl;
         if (attr == "POSITION_CARTESIAN") {
             for (std::size_t i = 0; i < point_count; ++i)
             {
@@ -226,6 +245,7 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
                            + translate.GetZ();
                 points->InsertNextPoint(point.GetData());
             }
+            //std::cout << "Points size after conversion " << points->GetNumberOfPoints() << std::endl;
         } else if (attr == "COLOR_PACKED")
         {
             for (std::size_t i = 0; i < point_count; ++i)
@@ -236,11 +256,15 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
                 color[1] = 1.f * data[index + 1] / 255.f;
                 color[2] = 1.f * data[index + 2] / 255.f;
                 color[3] = 1.f * data[index + 3] / 255.f;
-                colors->SetTuple(i, color.GetData());
+                //std::cout << "Inserting color " << color[0] << ", " << color[1] << ", " << color[2] << ", " << color[3] << std::endl;
+                colors->InsertTuple(i, color.GetData());
+                //std::cout << "Color after " << colors->GetTuple(i)[0] << ", " << colors->GetTuple(i)[1] << ", " << colors->GetTuple(i)[2] << ", " << colors->GetTuple(i)[3] << std::endl;
+
             }
         }
         offset += vtkPotreeMetaData::SizeOf(attr);
     }
+
     if(points->GetNumberOfPoints() == 0) {
         std::cerr << "No POSITION_CARTESIAN data: " << node->GetName() << std::endl;
         std::lock_guard<std::mutex> lock{node->Mutex};
@@ -255,7 +279,22 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
         node->PointCount = point_count;
 
         vtkNew<vtkPolyData> polydata;
+
+        // Add cells
+        vtkSmartPointer<vtkCellArray> vtk_cells = vtkSmartPointer<vtkCellArray>::New();
+        vtkSmartPointer<vtkIdTypeArray> cells = vtkSmartPointer<vtkIdTypeArray>::New();
+        vtkIdType* cell_buf = new vtkIdType[point_count * 2];
+        for(size_t i = 0; i < point_count; i++)
+        {
+            size_t i2 = 2 * i;
+            cell_buf[i2 + 0] = static_cast<vtkIdType>(1);
+            cell_buf[i2 + 1] = i;
+        }
+        cells->SetVoidArray(cell_buf, point_count * 2, 0, vtkIdTypeArray::VTK_DATA_ARRAY_DELETE);
+        vtk_cells->SetCells(point_count, cells);
+
         polydata->SetPoints(points);
+        polydata->SetVerts(vtk_cells);
         polydata->GetPointData()->SetScalars(colors);
         polydata->GetPointData()->SetActiveScalars("colors");
         vtkMapper* mapper = MapperTemplate->NewInstance();
@@ -271,14 +310,13 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
 
 void vtkPotreeLoader::UnloadNode(vtkPotreeNodePtr &node, bool recursive) {
     std::unique_lock<std::mutex> lock{node->Mutex};
-    if(!Cache.exist(node)) {
-        // cache this node if it is not in the cache
+    if(node->IsLoaded() && !Cache.exist(node)) {
+        // cache this node if it is loaded and not in the cache
         Cache.put(node, std::make_pair(node->Mapper, node->PointCount));
     }
-    if(node->PointCount > 0) {
-        node->Mapper = nullptr; // delete the mapper and it's ressources
-    }
     node->Loaded = false;
+
+    node->Mapper = nullptr; // delete the mapper and it's ressources
     lock.unlock();
     if(recursive) {
         for (vtkPotreeNodePtr & child : node->Children) {
@@ -291,4 +329,8 @@ void vtkPotreeLoader::UnloadNode(vtkPotreeNodePtr &node, bool recursive) {
 
 bool vtkPotreeLoader::IsCached(vtkPotreeNodePtr &node) const {
     return Cache.exist(node);
+}
+
+void vtkPotreeLoader::PrintSelf(ostream &os, vtkIndent indent) {
+    Superclass::PrintSelf(os, indent);
 }

@@ -38,12 +38,12 @@ private:
     };
 public:
     LRUCache(size_t cache_size_): func_(), cache_size_(cache_size_), current_cache_size_(0) {
-        ;
     };
 
     void put(const KEY_T &key, const VAL_T &val){
         auto it = item_map_.find(key);
         if(it != item_map_.end()){
+            cache_size_ -= func_(it->first, it->second->second);
             item_list_.erase(it->second);
             item_map_.erase(it);
         }
@@ -53,12 +53,20 @@ public:
         clean();
     };
 
-    void cache_size(size_t cs) {
+    void max_cache_size(size_t cs) {
         cache_size_ = cs;
     }
 
-    size_t cache_size() const {
+    size_t max_cache_size() const {
         return cache_size_;
+    }
+
+    size_t cache_size() const {
+        return current_cache_size_;
+    }
+
+    size_t num_entries() const {
+        return item_map_.size();
     }
 
     bool exist(const KEY_T &key) const {

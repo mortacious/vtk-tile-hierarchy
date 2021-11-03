@@ -51,7 +51,7 @@ public:
     vtkMapper* GetTemplateMapper();
 
     void SetCacheSize(size_t cs) {
-        Cache.cache_size(cs);
+        Cache.max_cache_size(cs);
     }
 
     size_t GetCacheSize() const {

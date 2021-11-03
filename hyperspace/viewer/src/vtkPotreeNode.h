@@ -26,9 +26,12 @@
 #pragma once
 #include <vtkBoundingBox.h>
 #include <vtkSmartPointer.h>
+#include <vtkWrappingHints.h>
 #include <memory>
 #include <mutex>
 #include <array>
+#include "vtkHyperspaceExtensionsModule.h" // For export macro
+
 
 class vtkMapper;
 class vtkPotreeLoader;
@@ -40,12 +43,14 @@ class vtkActor;
 class vtkPotreeNode;
 using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
 
-class vtkPotreeNode
+VTK_WRAPEXCLUDE class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeNode
 {
 public:
     vtkPotreeNode(const std::string& name,
-                        const vtkBoundingBox& bounding_box,
-                        const std::weak_ptr<vtkPotreeNode> parent = std::weak_ptr<vtkPotreeNode>());
+                  const vtkBoundingBox& bounding_box,
+                  std::weak_ptr<vtkPotreeNode> parent);
+    vtkPotreeNode(const std::string& name,
+                  const vtkBoundingBox& bounding_box);
     ~vtkPotreeNode();
 
     const std::string& GetName() const {

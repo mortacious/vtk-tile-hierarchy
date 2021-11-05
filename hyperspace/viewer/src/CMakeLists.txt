@@ -1,10 +1,12 @@
 set(classes
   vtkOpenGLGridMapper
-  vtkPotreeNode
+  vtkTileHierarchyNode
+  vtkPointHierarchyNode
+  vtkTileHierarchyLoader
   vtkPotreeLoader
-  vtkPotreeMapper
+  vtkTileHierarchyMapper
   vtkPotreeMetaData
-  vtkPotreeLoaderThread)
+  vtkTileHierarchyLoaderThread)
 
 vtk_module_add_module(Hyperspace::vtkExtensions
   CLASSES ${classes})

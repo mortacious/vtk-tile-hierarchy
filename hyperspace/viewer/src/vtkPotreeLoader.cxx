@@ -4,13 +4,13 @@
 
 #include "vtkPotreeLoader.h"
 #include "vtkPotreeMetaData.h"
-#include "vtkPotreeNode.h"
+#include "vtkPointHierarchyNode.h"
 #include <vtkBoundingBox.h>
 #include <vtkVector.h>
 #include <vtkPolyData.h>
 #include <vtkPointData.h>
 #include <vtkMapper.h>
-#include <vtkPolyDataMapper.h>
+#include <vtkPointGaussianMapper.h>
 #include <vtkCellArray.h>
 #include <vtkIdTypeArray.h>
 #include <filesystem>
@@ -23,17 +23,12 @@ namespace fs=std::filesystem;
 
 vtkStandardNewMacro(vtkPotreeLoader);
 
-
-size_t PotreeNodeSize::operator()(const vtkPotreeNodePtr &k, const std::pair<vtkSmartPointer<vtkMapper>, size_t> &v) const {
-    return k->GetPointCount();
-}
-
 vtkPotreeLoader::vtkPotreeLoader()
-    : Path(""), Cache(5000000)
+    : Path()
 {
-    std::cout << "Cache size on init is " << Cache.cache_size() << " num entries " << Cache.num_entries() << std::endl;
+    //std::cout << "Cache size on init is " << Cache.cache_size() << " num entries " << Cache.num_entries() << std::endl;
 
-    MapperTemplate = vtkSmartPointer<vtkPolyDataMapper>::New();
+    MapperTemplate = vtkSmartPointer<vtkPointGaussianMapper>::New();
 }
 
 bool vtkPotreeLoader::IsValidPotree(const std::string& path, std::string& error_msg) {
@@ -52,14 +47,6 @@ bool vtkPotreeLoader::IsValidPotree(const std::string& path, std::string& error_
         return false;
     }
     return true;
-}
-
-void vtkPotreeLoader::SetTemplateMapper(vtkMapper *mapper) {
-    MapperTemplate.TakeReference(mapper);
-}
-
-vtkMapper * vtkPotreeLoader::GetTemplateMapper() {
-    return MapperTemplate.Get();
 }
 
 std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::string &extension) const {
@@ -86,17 +73,17 @@ void vtkPotreeLoader::LoadMetaData() {
     std::cout << "Loaded Metadata. Point Count: " << MetaData->point_count_ << std::endl;
 }
 
-vtkPotreeNodePtr vtkPotreeLoader::LoadHierarchy() {
+void vtkPotreeLoader::Initialize() {
     if(!MetaData) {
         LoadMetaData();
     }
-    auto root_node = std::make_shared<vtkPotreeNode>("", MetaData->bounding_box_);
+    auto root_node = std::make_shared<vtkPointHierarchyNode>("", MetaData->bounding_box_);
     LoadNodeHierarchy(root_node);
-    return root_node;
+    RootNode = root_node;
 }
 
-void vtkPotreeLoader::LoadNodeHierarchy(const vtkPotreeNodePtr &root_node) const {
-    std::queue<vtkPotreeNodePtr> pending_nodes;
+void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_node) const {
+    std::queue<vtkPointHierarchyNodePtr> pending_nodes;
     pending_nodes.push(root_node);
 
     char cfg[5];
@@ -111,24 +98,24 @@ void vtkPotreeLoader::LoadNodeHierarchy(const vtkPotreeNodePtr &root_node) const
         pending_nodes.pop();
         for(int j=0; j<8; ++j) {
             if(cfg[0] & (1 << j)) {
-                if(!node->GetChildren()[j]) {
-                    auto child = std::make_shared<vtkPotreeNode>(node->GetName() + std::to_string(j), CreateChildBB(node->GetBoundingBox(), j), node);
+                if(!node->Children[j]) {
+                    auto child = std::make_shared<vtkPointHierarchyNode>(node->GetName() + std::to_string(j), CreateChildBB(node->GetBoundingBox(), j), node);
                     node->Children[j] = child;
                 }
-                pending_nodes.push(node->Children[j]);
+                pending_nodes.push(std::dynamic_pointer_cast<vtkPointHierarchyNode>(node->Children[j]));
             }
         }
         f.read(cfg, 5); // read next node
     }
 
-    std::unordered_set<vtkPotreeNode*> seen;    // save the shared_ptr copy overhead and just
+    std::unordered_set<vtkPointHierarchyNode*> seen;    // save the shared_ptr copy overhead and just
                                                 // track seen nodes by their address
 
     while(!pending_nodes.empty()) {
         auto node = pending_nodes.front()->Parent.lock();
         pending_nodes.pop();
-        if(node && seen.insert(node.get()).second)
-            LoadNodeHierarchy(node);
+        if(node && seen.insert(dynamic_cast<vtkPointHierarchyNode*>(node.get())).second)
+            LoadNodeHierarchy(std::dynamic_pointer_cast<vtkPointHierarchyNode>(node));
     }
 }
 
@@ -159,26 +146,24 @@ vtkBoundingBox vtkPotreeLoader::CreateChildBB(const vtkBoundingBox &parent, int 
     return vtkBoundingBox(min[0], max[0], min[1], max[1], min[2], max[2]);
 }
 
-void vtkPotreeLoader::LoadNode(vtkPotreeNodePtr &node, bool recursive) {
+void vtkPotreeLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
     std::unique_lock<std::mutex> lock{node->Mutex};
-
+    auto points_node = std::dynamic_pointer_cast<vtkPointHierarchyNode>(node);
     if(Cache.exist(node)) {
         auto val = Cache.get(node);
         node->Mapper = val.first;
-        node->PointCount = val.second;
-        std::cout << "Restoring node r" << node->GetName() << "with " << node->GetPointCount() << " points from cache";
-        //std::cout << "Cached node has " << node->PointCount << " points" << std::endl;
+        node->Size = val.second;
         node->Loaded = true;
         Cache.erase(node); // Remove the node from cache as long as it is needed by the mapper
         lock.unlock();
     } else {
         lock.unlock();
-        LoadNodeFromFile(node);
+        LoadNodeFromFile(points_node);
     }
     // recursively load the nodes below
     if (recursive)
     {
-        for (vtkPotreeNodePtr& child : node->Children)
+        for (auto& child : node->Children)
         {
             if (child)
                 LoadNode(child, true);
@@ -186,7 +171,7 @@ void vtkPotreeLoader::LoadNode(vtkPotreeNodePtr &node, bool recursive) {
     }
 }
 
-void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
+void vtkPotreeLoader::LoadNodeFromFile(vtkPointHierarchyNodePtr &node) {
     fs::path bin_file = CreateFileName(node->GetName(), ".bin");
     //std::cout << "Loading node data from file " << bin_file.string() << std::endl;
     if (!fs::is_regular_file(bin_file))
@@ -209,11 +194,11 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
     //std::cout << "Point count to load " << point_count << std::endl;
     if (point_count == 0)
     {
-        std::cout << "Got empty node: r" << node->GetName() << std::endl;
-        throw std::runtime_error("Empty node");
+        // empty nodes do not need a wrapper
+        //std::cout << "Got empty node: r" << node->GetName() << std::endl;
         std::lock_guard<std::mutex> lock{node->Mutex};
         node->Mapper = nullptr;
-        node->PointCount = 0;
+        node->Size = 0;
         node->Loaded = true;
         return;
     }
@@ -228,7 +213,6 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
     node->BoundingBox.GetMinPoint(translate.GetData());
 
     for (const std::string& attr : MetaData->point_attributes_) {
-        //std::cout << "Point attribute " << attr << std::endl;
         if (attr == "POSITION_CARTESIAN") {
             for (std::size_t i = 0; i < point_count; ++i)
             {
@@ -269,57 +253,57 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPotreeNodePtr &node) {
         std::cerr << "No POSITION_CARTESIAN data: " << node->GetName() << std::endl;
         std::lock_guard<std::mutex> lock{node->Mutex};
         node->Mapper = nullptr;
-        node->PointCount = 0;
+        node->Size = 0;
         node->Loaded = true;
         return;
     }
     {
+        //std::cout << "Creating the mapper " << std::endl;
         // create the actual mapper
         std::lock_guard<std::mutex> lock{node->Mutex};
-        node->PointCount = point_count;
+        node->Size = point_count;
 
         vtkNew<vtkPolyData> polydata;
 
         // Add cells
-        vtkSmartPointer<vtkCellArray> vtk_cells = vtkSmartPointer<vtkCellArray>::New();
-        vtkSmartPointer<vtkIdTypeArray> cells = vtkSmartPointer<vtkIdTypeArray>::New();
-        vtkIdType* cell_buf = new vtkIdType[point_count * 2];
-        for(size_t i = 0; i < point_count; i++)
-        {
-            size_t i2 = 2 * i;
-            cell_buf[i2 + 0] = static_cast<vtkIdType>(1);
-            cell_buf[i2 + 1] = i;
-        }
-        cells->SetVoidArray(cell_buf, point_count * 2, 0, vtkIdTypeArray::VTK_DATA_ARRAY_DELETE);
-        vtk_cells->SetCells(point_count, cells);
+        //vtkSmartPointer<vtkCellArray> vtk_cells = vtkSmartPointer<vtkCellArray>::New();
+        //vtkSmartPointer<vtkIdTypeArray> cells = vtkSmartPointer<vtkIdTypeArray>::New();
+        //vtkIdType* cell_buf = new vtkIdType[point_count * 2];
+        //for(size_t i = 0; i < point_count; i++)
+//        {
+//            size_t i2 = 2 * i;
+//            cell_buf[i2 + 0] = static_cast<vtkIdType>(1);
+//            cell_buf[i2 + 1] = i;
+//        }
+//        cells->SetVoidArray(cell_buf, point_count * 2, 0, vtkIdTypeArray::VTK_DATA_ARRAY_DELETE);
+//        vtk_cells->SetCells(point_count, cells);
 
         polydata->SetPoints(points);
-        polydata->SetVerts(vtk_cells);
+        //polydata->SetVerts(vtk_cells);
         polydata->GetPointData()->SetScalars(colors);
         polydata->GetPointData()->SetActiveScalars("colors");
-        vtkMapper* mapper = MapperTemplate->NewInstance();
-        assert(mapper->GetReferenceCount() == 1);
-        mapper->ShallowCopy(MapperTemplate);
+        //std::cout << "Done with polydata" << std::endl;
+        vtkMapper* mapper = MakeMapper();
         mapper->SetInputDataObject(polydata);
-        mapper->SetStatic(true);
         // update the node with the mapper
         node->Mapper.TakeReference(mapper);
         node->Loaded = true;
+        //std::cout << "Done loading node r" << node->GetName() << std::endl;
     }
 }
 
-void vtkPotreeLoader::UnloadNode(vtkPotreeNodePtr &node, bool recursive) {
+void vtkPotreeLoader::UnloadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
     std::unique_lock<std::mutex> lock{node->Mutex};
     if(node->IsLoaded() && !Cache.exist(node)) {
         // cache this node if it is loaded and not in the cache
-        Cache.put(node, std::make_pair(node->Mapper, node->PointCount));
+        Cache.put(node, std::make_pair(node->Mapper, node->GetSize()));
     }
     node->Loaded = false;
 
     node->Mapper = nullptr; // delete the mapper and it's ressources
     lock.unlock();
     if(recursive) {
-        for (vtkPotreeNodePtr & child : node->Children) {
+        for (vtkTileHierarchyNodePtr & child : node->Children) {
             if(child) {
                 UnloadNode(child, true);
             }
@@ -327,10 +311,17 @@ void vtkPotreeLoader::UnloadNode(vtkPotreeNodePtr &node, bool recursive) {
     }
 }
 
-bool vtkPotreeLoader::IsCached(vtkPotreeNodePtr &node) const {
-    return Cache.exist(node);
+void vtkPotreeLoader::PrintSelf(ostream &os, vtkIndent indent) {
+    vtkTileHierarchyLoader::PrintSelf(os, indent);
 }
 
-void vtkPotreeLoader::PrintSelf(ostream &os, vtkIndent indent) {
-    Superclass::PrintSelf(os, indent);
+vtkMapper * vtkPotreeLoader::MakeMapper() const {
+    //std::cout << "Making mapper" << std::endl;
+    auto mapper = vtkPointGaussianMapper::SafeDownCast(vtkTileHierarchyLoader::MakeMapper());
+    mapper->SetEmissive(false);
+    mapper->SetScalarModeToUsePointData();
+    mapper->SetScaleFactor(0);
+    //mapper->SetScaleFactor(0);
+    //std::cout << "Made mapper " << std::endl;
+    return mapper;
 }

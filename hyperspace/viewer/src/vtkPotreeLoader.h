@@ -5,6 +5,7 @@
 #pragma once
 
 #include "vtkHyperspaceExtensionsModule.h" // For export macro
+#include "vtkTileHierarchyLoader.h"
 #include "lruCache.h"
 #include <string>
 #include <vtkWrappingHints.h>
@@ -12,31 +13,28 @@
 #include <vtkObject.h>
 #include <memory>
 
-class vtkPotreeNode;
-using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
+class vtkPointHierarchyNode;
+using vtkPointHierarchyNodePtr = std::shared_ptr<vtkPointHierarchyNode>;
 class vtkPotreeMetaData;
 class vtkBoundingBox;
 class vtkMapper;
 
-struct PotreeNodeSize {
-    size_t operator()(const vtkPotreeNodePtr & k , const std::pair<vtkSmartPointer<vtkMapper>, size_t>& v) const;
-};
-
-class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoader: public vtkObject
+class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoader: public vtkTileHierarchyLoader
 {
 public:
     static vtkPotreeLoader* New();
     vtkTypeMacro(vtkPotreeLoader, vtkObject);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
-    void LoadMetaData();
-    VTK_WRAPEXCLUDE vtkPotreeNodePtr LoadHierarchy();
 
-    VTK_WRAPEXCLUDE void LoadNode(vtkPotreeNodePtr& node, bool recursive = false);
 
-    VTK_WRAPEXCLUDE void UnloadNode(vtkPotreeNodePtr& node, bool recursive = false);
+    virtual void Initialize();
 
-    VTK_WRAPEXCLUDE bool IsCached(vtkPotreeNodePtr& node) const;
+    VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) override;
+
+    VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) override;
+
+    vtkMapper * MakeMapper() const override;
 
     void SetPath(const std::string& path) {
         Path = path;
@@ -46,36 +44,25 @@ public:
         return Path;
     }
 
-    void SetTemplateMapper(vtkMapper* mapper);
-
-    vtkMapper* GetTemplateMapper();
-
-    void SetCacheSize(size_t cs) {
-        Cache.max_cache_size(cs);
-    }
-
-    size_t GetCacheSize() const {
-        return Cache.cache_size();
-    }
-
     static bool IsValidPotree(const std::string& path, std::string& error_msg);
 protected:
     vtkPotreeLoader();
     ~vtkPotreeLoader() = default;
 
-    friend class vtkPotreeNode;
+    using vtkTileHierarchyLoader::SetMapperTemplate;
 
-    void LoadNodeHierarchy(const vtkPotreeNodePtr& root_node) const;
-    void LoadNodeFromFile(vtkPotreeNodePtr& node);
+    vtkMapper* GetTemplateMapper();
+
+    void LoadMetaData();
+    void LoadNodeHierarchy(const vtkPointHierarchyNodePtr& root_node) const;
+    void LoadNodeFromFile(vtkPointHierarchyNodePtr& node);
 
     std::string CreateFileName(const std::string& name, const std::string& extension) const;
     static vtkBoundingBox CreateChildBB(const vtkBoundingBox& parent,
                               int index);
+
     std::string Path;
-    vtkSmartPointer<vtkMapper> MapperTemplate;
     std::unique_ptr<vtkPotreeMetaData> MetaData;
-    using LRUCacheType = LRUCache<vtkPotreeNodePtr, std::pair<vtkSmartPointer<vtkMapper>, size_t>, PotreeNodeSize>;
-    LRUCacheType Cache;
 private:
     vtkPotreeLoader(const vtkPotreeLoader&) = delete;
     void operator=(const vtkPotreeLoader&) = delete;

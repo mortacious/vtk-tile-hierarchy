@@ -13,27 +13,27 @@
 #include "vtkHyperspaceExtensionsModule.h" // For export macro
 
 
-class vtkPotreeLoader;
-class vtkPotreeNode;
-using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
+class vtkTileHierarchyLoader;
+class vtkTileHierarchyNode;
+using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
 
-VTK_WRAPEXCLUDE class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoaderThread {
+VTK_WRAPEXCLUDE class VTKHYPERSPACEEXTENSIONS_EXPORT vtkTileHierarchyLoaderThread {
 public:
-    explicit vtkPotreeLoaderThread(vtkPotreeLoader* loader);
-    ~vtkPotreeLoaderThread();
+    explicit vtkTileHierarchyLoaderThread(vtkTileHierarchyLoader* loader);
+    ~vtkTileHierarchyLoaderThread();
     void UnscheduleAll();
-    void ScheduleForLoading(vtkPotreeNodePtr& node);
+    void ScheduleForLoading(vtkTileHierarchyNodePtr& node);
     void SetNodeLoadedCallBack(const std::function<void()>& func);
 private:
     void Run();
 
-    vtkSmartPointer<vtkPotreeLoader> Loader;
+    vtkSmartPointer<vtkTileHierarchyLoader> Loader;
     bool Running;
 
     std::function<void()> Func;
     std::mutex Mutex;
     std::condition_variable Cond;
-    std::queue<vtkPotreeNodePtr> NeedToLoad;
+    std::queue<vtkTileHierarchyNodePtr> NeedToLoad;
     std::thread Thread;
 
 };

@@ -17,18 +17,18 @@ class vtkActor;
 class vtkWindow;
 class vtkCamera;
 class vtkPotreeLoader;
-class vtkPotreeNode;
-using vtkPotreeNodePtr = std::shared_ptr<vtkPotreeNode>;
-class vtkPotreeLoaderThread;
+class vtkTileHierarchyNode;
+using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
+class vtkTileHierarchyLoaderThread;
 
 class CheckVisibilityCallback;
 class ReRenderCallback;
 
-class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeMapper : public vtkMapper
+class VTKHYPERSPACEEXTENSIONS_EXPORT vtkTileHierarchyMapper : public vtkMapper
 {
 public:
-    static vtkPotreeMapper* New();
-    vtkTypeMacro(vtkPotreeMapper, vtkMapper);
+    static vtkTileHierarchyMapper* New();
+    vtkTypeMacro(vtkTileHierarchyMapper, vtkMapper);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
 
@@ -56,8 +56,8 @@ public:
 
     void ReleaseGraphicsResources(vtkWindow* win) override;
 protected:
-    vtkPotreeMapper();
-    ~vtkPotreeMapper() override = default;
+    vtkTileHierarchyMapper();
+    ~vtkTileHierarchyMapper() override = default;
 
     /**
      * Need to loop over the hierarchy to compute bounds
@@ -72,23 +72,16 @@ protected:
      * @param camera
      * @return
      */
-    float GetPriority(const vtkPotreeNodePtr& node, vtkCamera* camera) const;
+    float GetPriority(const vtkTileHierarchyNodePtr& node, vtkCamera* camera) const;
 
     bool BoundsInitialized;
     std::atomic_bool ForceUpdate;
     std::size_t PointBudget;
     float MinimumNodeSize;
-    /**
-     * Time stamp for when we need to update the
-     * internal mappers
-     */
-    vtkTimeStamp InternalMappersBuildTime;
 
     vtkSmartPointer<vtkPotreeLoader> Loader;
     vtkSmartPointer<vtkRenderer> Renderer;
-    vtkSmartPointer<vtkCamera> Camera;
-    vtkPotreeNodePtr RootNode;
-    std::shared_ptr<vtkPotreeLoaderThread> LoaderThread;
+    std::shared_ptr<vtkTileHierarchyLoaderThread> LoaderThread;
 
     vtkNew<CheckVisibilityCallback> CheckVisibilityObserver;
     vtkNew<ReRenderCallback> ReRenderObserver;
@@ -96,6 +89,6 @@ private:
     friend class CheckVisibilityCallback;
     friend class ReRenderCallback;
 
-    vtkPotreeMapper(const vtkPotreeMapper&) = delete;
-    void operator=(const vtkPotreeMapper&) = delete;
+    vtkTileHierarchyMapper(const vtkTileHierarchyMapper&) = delete;
+    void operator=(const vtkTileHierarchyMapper&) = delete;
 };

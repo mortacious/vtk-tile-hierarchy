@@ -2,10 +2,10 @@
 // Created by mortacious on 10/29/21.
 //
 
-#include "vtkPotreeMapper.h"
-#include "vtkPotreeNode.h"
+#include "vtkTileHierarchyMapper.h"
+#include "vtkTileHierarchyNode.h"
 #include "vtkPotreeLoader.h"
-#include "vtkPotreeLoaderThread.h"
+#include "vtkTileHierarchyLoaderThread.h"
 #include "priorityQueue.h"
 #include <vtkObjectFactory.h>
 #include <vtkRenderer.h>
@@ -82,7 +82,7 @@ public:
     {
         //std::cout << "Camera moved" << std::endl;
         // Note the use of reinterpret_cast to cast the caller to the expected type.
-        auto camera = Mapper->Camera;//reinterpret_cast<vtkCamera*>(caller);
+        auto camera = Mapper->Renderer->GetActiveCamera();//reinterpret_cast<vtkCamera*>(caller);
         vtkVector3d camera_position;
         camera->GetPosition(camera_position.GetData());
         vtkQuaterniond camera_orientation(camera->GetOrientationWXYZ());
@@ -111,7 +111,7 @@ public:
     }
 
     // Set pointers to any clientData or callData here.
-    vtkPotreeMapper* Mapper;
+    vtkTileHierarchyMapper* Mapper;
     vtkVector3d LastPosition;
     vtkQuaterniond LastOrientation;
     vtkSmartPointer<vtkMatrix4x4> LastProjection;
@@ -138,7 +138,7 @@ public:
     }
 
     // Set pointers to any clientData or callData here.
-    vtkPotreeMapper* Mapper;
+    vtkTileHierarchyMapper* Mapper;
 };
 
 
@@ -147,62 +147,54 @@ vtkStandardNewMacro(ReRenderCallback);
 
 
 
-vtkStandardNewMacro(vtkPotreeMapper);
+vtkStandardNewMacro(vtkTileHierarchyMapper);
 
-vtkPotreeMapper::vtkPotreeMapper() {
+vtkTileHierarchyMapper::vtkTileHierarchyMapper()
+ : BoundsInitialized(false), ForceUpdate(false), Renderer(nullptr), PointBudget(1000000), MinimumNodeSize(30.f) {
     SetStatic(true); // This mapper does not use the pipeline
-    BoundsInitialized = false;
-    Renderer = nullptr;
     CheckVisibilityObserver->Mapper = this;
     ReRenderObserver->Mapper = this;
-    PointBudget = 1000000; // 1 Million points by default
-    MinimumNodeSize = 30.f; // Minimum size of a node
 }
 
-void vtkPotreeMapper::SetLoader(vtkPotreeLoader *loader) {
+void vtkTileHierarchyMapper::SetLoader(vtkPotreeLoader *loader) {
     Loader.TakeReference(loader);
-    LoaderThread = std::make_shared<vtkPotreeLoaderThread>(Loader.GetPointer());
+    LoaderThread = std::make_shared<vtkTileHierarchyLoaderThread>(Loader.GetPointer());
     LoaderThread->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
     BoundsInitialized = false;
-    std::cout << "Parsing Hierarchy" << std::endl;
-    RootNode = Loader->LoadHierarchy();
 }
 
-vtkPotreeLoader * vtkPotreeMapper::GetLoader() {
+vtkPotreeLoader * vtkTileHierarchyMapper::GetLoader() {
     return Loader;
 }
 
-void vtkPotreeMapper::ComputeBounds() {
+void vtkTileHierarchyMapper::ComputeBounds() {
     vtkMath::UninitializeBounds(this->Bounds);
-    if(!RootNode) {
-        RootNode = Loader->LoadHierarchy();
-    }
-    RootNode->GetBoundingBox().GetBounds(Bounds);
+    Loader->GetRootNode()->GetBoundingBox().GetBounds(Bounds);
     BoundsInitialized = true;
 }
 
-void vtkPotreeMapper::ReleaseGraphicsResources(vtkWindow* win)
+void vtkTileHierarchyMapper::ReleaseGraphicsResources(vtkWindow* win)
 {
-    //Loader->UnloadNode(RootNode, true);
+    //auto root_node = Loader->GetRootNode();
+    //Loader->UnloadNode(root_node, true);
 }
 
-double* vtkPotreeMapper::GetBounds()
+double* vtkTileHierarchyMapper::GetBounds()
 {
     if(!BoundsInitialized)
         this->ComputeBounds();
     return this->Bounds;
 }
 
-void vtkPotreeMapper::PrintSelf(ostream &os, vtkIndent indent) {
+void vtkTileHierarchyMapper::PrintSelf(ostream &os, vtkIndent indent) {
     this->Superclass::PrintSelf(os, indent);
 }
 
-void vtkPotreeMapper::OnNodeLoaded() {
-    //std::cout << "New node loaded" << std::endl;
+void vtkTileHierarchyMapper::OnNodeLoaded() {
     ForceUpdate = true;
 }
 
-void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
+void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     //std::cout << "Rendering" << std::endl;
     ForceUpdate = false;
 
@@ -216,71 +208,56 @@ void vtkPotreeMapper::Render(vtkRenderer *ren, vtkActor *a) {
         Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::EndInteractionEvent, CheckVisibilityObserver);
     }
 
-    if(Camera.Get() != ren->GetActiveCamera()) {
-        //if(Camera) {
-        //    Camera->RemoveObserver(CheckVisibilityObserver);
-        //}
-        Camera.TakeReference(ren->GetActiveCamera());
-        //Camera->AddObserver(vtkCommand::ModifiedEvent, CheckVisibilityObserver);
-    }
-
     if(Renderer->GetRenderWindow()->GetActualSize()[1] < 10) {
         return; // Do not render very small screens
     }
 
-    PriorityQueue<vtkPotreeNodePtr, float> process_queue;
-    process_queue.push(RootNode, 0);
+    PriorityQueue<vtkTileHierarchyNodePtr , float> process_queue;
+    auto root_node = Loader->GetRootNode();
+    process_queue.push(root_node, 0);
     std::size_t remaining_points = PointBudget;
     auto cam = Renderer->GetActiveCamera();
     double aspect_ratio = ren->GetTiledAspectRatio();
-//    float size_per_pixel = std::tan(vtkMath::RadiansFromDegrees(cam->GetViewAngle())) / Renderer->GetRenderWindow()->GetActualSize()[1];
 
-//    vtkSmartPointer<vtkMatrix4x4> projection_matrix;
-//    projection_matrix.TakeReference(cam->GetProjectionTransformMatrix(Renderer));
-//    float z_scale = std::sqrt(projection_matrix->GetElement(0,0) * projection_matrix->GetElement(0,0)
-//                              + projection_matrix->GetElement(1, 0) * projection_matrix->GetElement(1, 0)
-//                              + projection_matrix->GetElement(2, 0) * projection_matrix->GetElement(2, 0));
     while(!process_queue.empty()) {
         auto node = process_queue.top();
         process_queue.pop();
-//        auto bb = node->GetBoundingBox();
         if(intersect(cam, node->GetBoundingBox(), aspect_ratio) != OUTSIDE_FRUSTUM) {
-            //std::cout << "Intersected node " << node->GetName() << std::endl;
             if(node->IsLoaded()) {
-                if(node->GetPointCount() <= remaining_points) {
-                    remaining_points -= node->GetPointCount();
-                    std::cout << "Rendering node r" << node->GetName() << " with " << node->GetPointCount() << " points. Budget remaining: " << remaining_points << std::endl;
+                if(node->GetSize() <= remaining_points) {
+                    remaining_points -= node->GetSize();
+                    //std::cout << "Rendering node r" << node->GetName() << " with " << node->GetSize() << " points. Budget remaining: " << remaining_points << std::endl;
                     node->Render(ren, a); // Render this node!
-                    for(auto& child: node->GetChildren()) {
+                    for(auto& child: node->Children) {
                         if(child) {
                             float p = GetPriority(node, cam);
                             if(p > 0) {
                                 process_queue.push(child, p);
                             } else if(child->IsLoaded()) {
-                                std::cout << "Unloading node " << child->GetName() << " with " << child->GetPointCount() << " points due to low visibility of " << p << std::endl;
+                                //std::cout << "Unloading node " << child->GetName() << " with " << child->GetSize() << " points due to low visibility of " << p << std::endl;
                                 Loader->UnloadNode(child, true); // remove this child and all nodes below because they are too small
                             }
                         }
                     }
                 } else {
-                    std::cout << "Unloading node r" << node->GetName() << " with " << node->GetPointCount() << " points due to point budget" << std::endl;
+                    //std::cout << "Unloading node r" << node->GetName() << " with " << node->GetSize() << " points due to point budget" << std::endl;
                     Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
                 }
             } else {
-                std::cout << "Scheduling node r" << node->GetName() << " for loading" << std::endl;
+                //std::cout << "Scheduling node r" << node->GetName() << " for loading" << std::endl;
                 LoaderThread->ScheduleForLoading(node);
             }
         } else {
-            std::cout << "Unloading node r" << node->GetName() << " with " << node->GetPointCount() << " points because it is outside the frustum" << std::endl;
+            //std::cout << "Unloading node r" << node->GetName() << " with " << node->GetSize() << " points because it is outside the frustum" << std::endl;
             Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
 
         }
     }
-    std::cout << "--------------------------------------Rendering Done" << std::endl;
+    //std::cout << "--------------------------------------Rendering Done" << std::endl;
 }
 
 
-float vtkPotreeMapper::GetPriority(const vtkPotreeNodePtr &node, vtkCamera* camera) const {
+float vtkTileHierarchyMapper::GetPriority(const vtkTileHierarchyNodePtr &node, vtkCamera* camera) const {
     auto bbox = node->GetBoundingBox();
     vtkVector3d center;
     bbox.GetCenter(center.GetData());

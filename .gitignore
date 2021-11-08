@@ -1,0 +1,7 @@
+*.so
+vtk_tile_hierarchy/lib
+*.egg-info
+build/
+cmake-build-debug/
+cmake-build-release/
+.idea/

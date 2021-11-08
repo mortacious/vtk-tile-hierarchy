@@ -10,7 +10,7 @@
 #include <vtkMatrix4x4.h>
 #include <vtkCallbackCommand.h>
 #include <memory>
-#include "vtkHyperspaceExtensionsModule.h" // For export macro
+#include "vtkTileHierarchyModule.h" // For export macro
 
 class vtkRenderer;
 class vtkActor;
@@ -24,7 +24,7 @@ class vtkTileHierarchyLoaderThread;
 class CheckVisibilityCallback;
 class ReRenderCallback;
 
-class VTKHYPERSPACEEXTENSIONS_EXPORT vtkTileHierarchyMapper : public vtkMapper
+class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyMapper : public vtkMapper
 {
 public:
     static vtkTileHierarchyMapper* New();

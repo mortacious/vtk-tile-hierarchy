@@ -10,14 +10,14 @@
 #include <mutex>
 #include <functional>
 #include <queue>
-#include "vtkHyperspaceExtensionsModule.h" // For export macro
+#include "vtkTileHierarchyModule.h" // For export macro
 
 
 class vtkTileHierarchyLoader;
 class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
 
-VTK_WRAPEXCLUDE class VTKHYPERSPACEEXTENSIONS_EXPORT vtkTileHierarchyLoaderThread {
+VTK_WRAPEXCLUDE class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoaderThread {
 public:
     explicit vtkTileHierarchyLoaderThread(vtkTileHierarchyLoader* loader);
     ~vtkTileHierarchyLoaderThread();

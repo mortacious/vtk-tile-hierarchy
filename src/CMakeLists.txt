@@ -1,5 +1,4 @@
 set(classes
-  vtkOpenGLGridMapper
   vtkTileHierarchyNode
   vtkPointHierarchyNode
   vtkTileHierarchyLoader
@@ -8,8 +7,8 @@ set(classes
   vtkPotreeMetaData
   vtkTileHierarchyLoaderThread)
 
-vtk_module_add_module(Hyperspace::vtkExtensions
+vtk_module_add_module(vtkTileHierarchy
   CLASSES ${classes})
 
-vtk_module_link(Hyperspace::vtkExtensions
+vtk_module_link(vtkTileHierarchy
         PUBLIC jsoncpp)

@@ -10,7 +10,7 @@
 #include <vtkSmartPointer.h>
 #include <vtkObject.h>
 #include <memory>
-#include "vtkHyperspaceExtensionsModule.h" // For export macro
+#include "vtkTileHierarchyModule.h" // For export macro
 
 
 class vtkTileHierarchyNode;
@@ -18,7 +18,7 @@ using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
 class vtkMapper;
 
 
-class VTKHYPERSPACEEXTENSIONS_EXPORT vtkTileHierarchyLoader: public vtkObject {
+class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoader: public vtkObject {
 public:
     vtkTypeMacro(vtkTileHierarchyLoader, vtkObject);
     void PrintSelf(ostream& os, vtkIndent indent) override;

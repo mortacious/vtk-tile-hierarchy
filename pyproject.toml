@@ -1,0 +1,6 @@
+[build-system]
+requires = [
+    "wheel",
+    "setuptools",
+    "vtk>=9.0"
+]

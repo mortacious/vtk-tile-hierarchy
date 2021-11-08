@@ -1,7 +1,7 @@
 NAME
-  Hyperspace::vtkExtensions
+  vtkTileHierarchy
 LIBRARY_NAME
-  vtkHyperspaceExtensions
+  vtkTileHierarchy
 DEPENDS
   VTK::CommonCore
   VTK::RenderingOpenGL2

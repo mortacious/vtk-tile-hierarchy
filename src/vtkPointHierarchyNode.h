@@ -30,8 +30,9 @@
 #include <memory>
 #include <mutex>
 #include <array>
-#include "vtkHyperspaceExtensionsModule.h" // For export macro
 #include "vtkTileHierarchyNode.h"
+#include "vtkTileHierarchyModule.h" // For export macro
+
 
 
 class vtkMapper;
@@ -44,7 +45,7 @@ class vtkActor;
 class vtkPointHierarchyNode;
 using vtkPointHierarchyNodePtr = std::shared_ptr<vtkPointHierarchyNode>;
 
-VTK_WRAPEXCLUDE class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPointHierarchyNode: public vtkTileHierarchyNode
+VTK_WRAPEXCLUDE class VTKTILEHIERARCHY_EXPORT vtkPointHierarchyNode: public vtkTileHierarchyNode
 {
 public:
     vtkPointHierarchyNode(const std::string& name,

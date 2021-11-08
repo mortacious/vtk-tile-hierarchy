@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "vtkHyperspaceExtensionsModule.h" // For export macro
+#include "vtkTileHierarchyModule.h" // For export macro
 #include "vtkTileHierarchyLoader.h"
 #include "lruCache.h"
 #include <string>
@@ -19,7 +19,7 @@ class vtkPotreeMetaData;
 class vtkBoundingBox;
 class vtkMapper;
 
-class VTKHYPERSPACEEXTENSIONS_EXPORT vtkPotreeLoader: public vtkTileHierarchyLoader
+class VTKTILEHIERARCHY_EXPORT vtkPotreeLoader: public vtkTileHierarchyLoader
 {
 public:
     static vtkPotreeLoader* New();

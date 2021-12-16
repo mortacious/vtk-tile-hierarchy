@@ -112,7 +112,7 @@ setup(
     ],
     packages=find_packages(include=['vtk_tile_hierarchy']),
     ext_modules=[CMakeExtension('vtk_tile_hierarchy', target_name="vtkTileHierarchyPython",
-                                cmake_args=[])],
+                                cmake_args=[], debug=False)],
     cmdclass={"build_ext": CMakeBuild},
     install_requires=['numpy',
                       'vtk>=9.0']

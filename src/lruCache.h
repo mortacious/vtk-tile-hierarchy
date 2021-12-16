@@ -6,6 +6,9 @@
 #include <list>
 #include <unordered_map>
 #include <assert.h>
+#include <stdexcept>
+#include <iostream>
+#include <mutex>
 
 using namespace std;
 
@@ -24,6 +27,7 @@ class LRUCache{
 private:
     list< pair<KEY_T,VAL_T> > item_list_;
     unordered_map<KEY_T, decltype(item_list_.begin()) > item_map_;
+    std::mutex mutex_;
     FUNC func_;
     size_t cache_size_;
     size_t current_cache_size_;
@@ -41,6 +45,7 @@ public:
     };
 
     void put(const KEY_T &key, const VAL_T &val){
+        std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
         if(it != item_map_.end()){
             cache_size_ -= func_(it->first, it->second->second);
@@ -74,12 +79,19 @@ public:
     };
 
     VAL_T get(const KEY_T &key){
+        std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
+        if(it == item_map_.end()) {
+            throw std::runtime_error("Something went wrong!");
+        }
+        //std::cout << it->first->Name << " " << it->second->second.second << std::endl;
+
         item_list_.splice(item_list_.begin(), item_list_, it->second);
         return it->second->second;
     };
 
     void erase(const KEY_T& key) {
+        std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
         item_list_.erase(it->second);
         item_map_.erase(it->first);

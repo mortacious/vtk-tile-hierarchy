@@ -14,7 +14,7 @@ size_t vtkTileHierarchyLoader::TileTreeNodeSize::operator()(const vtkTileHierarc
 }
 
 vtkTileHierarchyLoader::vtkTileHierarchyLoader()
-    : MapperTemplate(vtkDataSetMapper::New()), RootNode(nullptr), Cache(5000000) {
+    : MapperTemplate(vtkDataSetMapper::New()), RootNode(nullptr), Cache(15000000) {
     MapperTemplate->SetColorModeToMapScalars();
     MapperTemplate->SetScalarModeToUsePointData();
     MapperTemplate->SetStatic(true);

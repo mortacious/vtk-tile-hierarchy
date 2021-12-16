@@ -11,13 +11,14 @@
 #include <vtkPointData.h>
 #include <vtkMapper.h>
 #include <vtkPointGaussianMapper.h>
-#include <vtkCellArray.h>
 #include <vtkIdTypeArray.h>
 #include <filesystem>
 #include <queue>
 #include <array>
 #include <unordered_set>
 #include <vtkFloatArray.h>
+#include <vtkUnsignedCharArray.h>
+#include <vtkScalarsToColors.h>
 
 namespace fs=std::filesystem;
 
@@ -88,6 +89,7 @@ void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_nod
 
     char cfg[5];
     fs::path hrc_file = CreateFileName(root_node->GetName(), ".hrc");
+    //std::cout << "Loading from hrc file: " << hrc_file.string() << std::endl;
     std::ifstream f{hrc_file.c_str()};
     if(!f.good())
         throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
@@ -173,6 +175,7 @@ void vtkPotreeLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
 
 void vtkPotreeLoader::LoadNodeFromFile(vtkPointHierarchyNodePtr &node) {
     fs::path bin_file = CreateFileName(node->GetName(), ".bin");
+
     //std::cout << "Loading node data from file " << bin_file.string() << std::endl;
     if (!fs::is_regular_file(bin_file))
     {
@@ -204,9 +207,9 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPointHierarchyNodePtr &node) {
     }
     vtkNew<vtkPoints> points;
     points->Allocate(point_count);
-    vtkNew<vtkFloatArray> colors;
+    vtkNew<vtkUnsignedCharArray> colors;
     colors->SetNumberOfComponents(4);
-    colors->SetName("colors");
+    colors->SetName("Colors");
     colors->SetNumberOfTuples(points->GetNumberOfPoints());
     std::size_t offset = 0;
     vtkVector3d translate;
@@ -236,10 +239,10 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPointHierarchyNodePtr &node) {
             {
                 std::size_t index = offset + i * MetaData->point_byte_size_;
                 vtkVector<float, 4> color;
-                color[0] = 1.f * data[index + 0] / 255.f;
-                color[1] = 1.f * data[index + 1] / 255.f;
-                color[2] = 1.f * data[index + 2] / 255.f;
-                color[3] = 1.f * data[index + 3] / 255.f;
+                color[0] = data[index + 0];//1.f * data[index + 0] / 255.f;
+                color[1] = data[index + 1];//1.f * data[index + 1] / 255.f;
+                color[2] = data[index + 2];//1.f * data[index + 2] / 255.f;
+                color[3] = data[index + 3];//1.f * data[index + 3] / 255.f;
                 //std::cout << "Inserting color " << color[0] << ", " << color[1] << ", " << color[2] << ", " << color[3] << std::endl;
                 colors->InsertTuple(i, color.GetData());
                 //std::cout << "Color after " << colors->GetTuple(i)[0] << ", " << colors->GetTuple(i)[1] << ", " << colors->GetTuple(i)[2] << ", " << colors->GetTuple(i)[3] << std::endl;
@@ -281,10 +284,14 @@ void vtkPotreeLoader::LoadNodeFromFile(vtkPointHierarchyNodePtr &node) {
         polydata->SetPoints(points);
         //polydata->SetVerts(vtk_cells);
         polydata->GetPointData()->SetScalars(colors);
-        polydata->GetPointData()->SetActiveScalars("colors");
+        polydata->GetPointData()->SetActiveScalars("Colors");
         //std::cout << "Done with polydata" << std::endl;
         vtkMapper* mapper = MakeMapper();
         mapper->SetInputDataObject(polydata);
+        //mapper->GetLookupTable()->SetVectorModeToRGBColors();
+        //mapper->GetLookupTable().SetNumberOfTableValues(256);
+
+        //mapper->SetColorModeToDirectScalars();
         // update the node with the mapper
         node->Mapper.TakeReference(mapper);
         node->Loaded = true;

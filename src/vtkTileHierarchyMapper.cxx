@@ -80,7 +80,7 @@ public:
     // Here we Create a vtkCallbackCommand and reimplement it.
     void Execute(vtkObject* caller, unsigned long evId, void*) override
     {
-        //std::cout << "Camera moved" << std::endl;
+        std::cout << "Camera moved" << std::endl;
         // Note the use of reinterpret_cast to cast the caller to the expected type.
         auto camera = Mapper->Renderer->GetActiveCamera();//reinterpret_cast<vtkCamera*>(caller);
         vtkVector3d camera_position;
@@ -128,7 +128,7 @@ public:
         // Note the use of reinterpret_cast to cast the caller to the expected type.
         if (vtkCommand::TimerEvent == evId) {
             if(Mapper->ForceUpdate && Mapper->Renderer) {
-                //std::cout << "Re-rendering " << std::endl;
+                std::cout << "Re-rendering " << count++ << std::endl;
                 Mapper->Renderer->GetRenderWindow()->Render(); // force a render
             }
         }
@@ -139,6 +139,7 @@ public:
 
     // Set pointers to any clientData or callData here.
     vtkTileHierarchyMapper* Mapper;
+    size_t count = 0;
 };
 
 
@@ -195,7 +196,7 @@ void vtkTileHierarchyMapper::OnNodeLoaded() {
 }
 
 void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
-    //std::cout << "Rendering" << std::endl;
+    std::cout << "Rendering" << std::endl;
     ForceUpdate = false;
 
     if(!Renderer || Renderer.Get() != ren) {
@@ -203,9 +204,9 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
             Renderer->GetRenderWindow()->GetInteractor()->RemoveObserver(ReRenderObserver);
         }
         Renderer.TakeReference(ren);
-        Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::TimerEvent, ReRenderObserver);
-        Renderer->GetRenderWindow()->GetInteractor()->CreateRepeatingTimer(100); // Check if nodes have been loaded 10 times a second
-        Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::EndInteractionEvent, CheckVisibilityObserver);
+        //Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::TimerEvent, ReRenderObserver);
+        //Renderer->GetRenderWindow()->GetInteractor()->CreateRepeatingTimer(250); // Check if nodes have been loaded 10 times a second
+        //Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::EndInteractionEvent, CheckVisibilityObserver);
     }
 
     if(Renderer->GetRenderWindow()->GetActualSize()[1] < 10) {

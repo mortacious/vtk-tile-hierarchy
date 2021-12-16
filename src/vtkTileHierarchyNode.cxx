@@ -12,7 +12,7 @@ vtkTileHierarchyNode::vtkTileHierarchyNode(const std::string& name, const vtkBou
                                  unsigned int num_children,
                                  std::weak_ptr<vtkTileHierarchyNode> parent)
         : Name(name), BoundingBox(bounding_box),
-          Parent(std::move(parent)), Children(num_children, nullptr), Loaded(false), Size(0)
+          Parent(std::move(parent)), Children(num_children, nullptr), Size(0)
 {}
 
 vtkTileHierarchyNode::vtkTileHierarchyNode(const std::string& name, const vtkBoundingBox &bounding_box, unsigned int num_children)
@@ -22,10 +22,10 @@ vtkTileHierarchyNode::~vtkTileHierarchyNode() {
 }
 
 void vtkTileHierarchyNode::Render(vtkRenderer *ren, vtkActor *a) {
-    if(!Loaded) return;
     std::lock_guard<std::mutex> lock{Mutex};
-    if(Mapper)
-        Mapper->Render(ren, a);
+    if(!Mapper) return;
+
+    Mapper->Render(ren, a);
 }
 
 vtkTileHierarchyNodePtr vtkTileHierarchyNode::GetChild(vtkIdType idx) {

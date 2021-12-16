@@ -10,6 +10,7 @@
 #include <iostream>
 #include <mutex>
 
+
 using namespace std;
 
 /**
@@ -27,15 +28,21 @@ class LRUCache{
 private:
     list< pair<KEY_T,VAL_T> > item_list_;
     unordered_map<KEY_T, decltype(item_list_.begin()) > item_map_;
-    std::mutex mutex_;
+    //std::mutex mutex_;
     FUNC func_;
     size_t cache_size_;
     size_t current_cache_size_;
 private:
     void clean(void){
+        //std::cout << "Attempting cleanup " << current_cache_size_ << " max " << cache_size_ << std::endl;
+        //bool first = true;
         while(current_cache_size_ > cache_size_){
+            //if(first) {
+            //    std::cout << "Cleaning cache" << std::endl;
+            //    first = false;
+            //}
             auto last_it = item_list_.end(); last_it --;
-            cache_size_ -= func_(last_it->first, last_it->second);
+            current_cache_size_ -= func_(last_it->first, last_it->second);
             item_map_.erase(last_it->first);
             item_list_.pop_back();
         }
@@ -45,16 +52,16 @@ public:
     };
 
     void put(const KEY_T &key, const VAL_T &val){
-        std::lock_guard<std::mutex> lock{mutex_};
+        //std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
         if(it != item_map_.end()){
-            cache_size_ -= func_(it->first, it->second->second);
+            current_cache_size_ -= func_(it->first, it->second->second);
             item_list_.erase(it->second);
             item_map_.erase(it);
         }
         item_list_.push_front(make_pair(key, val));
         item_map_.insert(make_pair(key, item_list_.begin()));
-        cache_size_ += func_(key, val);
+        current_cache_size_ += func_(key, val);
         clean();
     };
 
@@ -79,7 +86,7 @@ public:
     };
 
     VAL_T get(const KEY_T &key){
-        std::lock_guard<std::mutex> lock{mutex_};
+        //std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
         if(it == item_map_.end()) {
             throw std::runtime_error("Something went wrong!");
@@ -91,10 +98,12 @@ public:
     };
 
     void erase(const KEY_T& key) {
-        std::lock_guard<std::mutex> lock{mutex_};
+        //std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
         item_list_.erase(it->second);
         item_map_.erase(it->first);
+        current_cache_size_ -= func_(it->first, it->second->second);
+
     }
 
 };

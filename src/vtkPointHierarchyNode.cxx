@@ -25,7 +25,7 @@ vtkPointHierarchyNode::vtkPointHierarchyNode(const std::string &name, const vtkB
 }
 
 void vtkPointHierarchyNode::Render(vtkRenderer *ren, vtkActor *a) {
-    if(!Loaded) return;
+    if(!IsLoaded()) return;
     a->GetProperty()->SetRepresentationToPoints();
     a->GetProperty()->SetPointSize(3);
     vtkTileHierarchyNode::Render(ren, a); // Do the actual rendering

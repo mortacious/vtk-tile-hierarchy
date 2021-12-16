@@ -25,9 +25,11 @@ public:
 
     virtual void Initialize() = 0;
 
-    virtual void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) = 0;
+    VTK_WRAPEXCLUDE virtual void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false);
 
-    virtual void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) = 0;
+    VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive = false);
+
+    VTK_WRAPEXCLUDE virtual void FetchNode(vtkTileHierarchyNodePtr& node) = 0;
 
     virtual vtkMapper* MakeMapper() const;
 
@@ -59,6 +61,8 @@ protected:
 
     using LRUCacheType = LRUCache<vtkTileHierarchyNodePtr, std::pair<vtkSmartPointer<vtkMapper>, size_t>, TileTreeNodeSize>;
     LRUCacheType Cache;
+
+    std::mutex CacheMutex;
 
     void SetRootNode(vtkTileHierarchyNodePtr root_node) {
         RootNode = root_node;

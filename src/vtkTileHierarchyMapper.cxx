@@ -196,7 +196,7 @@ void vtkTileHierarchyMapper::OnNodeLoaded() {
 }
 
 void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
-    std::cout << "Rendering" << std::endl;
+    //std::cout << "Rendering" << std::endl;
     ForceUpdate = false;
 
     if(!Renderer || Renderer.Get() != ren) {

@@ -58,7 +58,7 @@ public:
     void SetNumChildren(unsigned int num_children);
 
     bool IsLoaded() const {
-        return Loaded;
+        return Mapper != nullptr;
     }
 
     virtual void Render(vtkRenderer* ren, vtkActor* a);
@@ -77,7 +77,7 @@ public:
     vtkBoundingBox BoundingBox;
     std::weak_ptr<vtkTileHierarchyNode> Parent;
     std::vector<vtkTileHierarchyNodePtr> Children;
-    bool Loaded;
+    //bool Loaded;
     // This is set dynamically
     std::size_t Size;
     vtkSmartPointer<vtkMapper> Mapper;

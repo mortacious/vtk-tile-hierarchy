@@ -49,3 +49,46 @@ vtkMapper * vtkTileHierarchyLoader::MakeMapper() const {
     mapper->SetStatic(true);
     return mapper;
 }
+
+void vtkTileHierarchyLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
+    std::unique_lock<std::mutex> node_lock{node->Mutex};
+    if(Cache.exist(node)) {
+        std::scoped_lock<std::mutex> cache_lock{CacheMutex};
+        auto val = Cache.get(node);
+        node->Mapper = vtkSmartPointer(std::move(val.first));
+        node->Size = val.second;
+        Cache.erase(node); // Remove the node from cache as long as it is used by the mapper
+        node_lock.unlock();
+    } else {
+        node_lock.unlock();
+        FetchNode(node);
+    }
+
+    // recursively load all nodes below as well
+    if (recursive)
+    {
+        for (auto& child : node->Children)
+        {
+            if (child)
+                LoadNode(child, true);
+        }
+    }
+}
+
+void vtkTileHierarchyLoader::UnloadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
+    std::unique_lock<std::mutex> node_lock{node->Mutex};
+    if(node->IsLoaded() && !Cache.exist(node)) {
+        std::scoped_lock<std::mutex> cache_lock{CacheMutex};
+        // cache this node if it is loaded and not in the cache
+        Cache.put(node, std::make_pair(std::move(node->Mapper), node->GetSize()));
+    }
+    node->Mapper = nullptr; // delete the mapper and it's ressources if not null already
+    node_lock.unlock();
+    if(recursive) {
+        for (auto& child : node->Children) {
+            if(child) {
+                UnloadNode(child, true);
+            }
+        }
+    }
+}

@@ -26,13 +26,12 @@ public:
     vtkTypeMacro(vtkPotreeLoader, vtkObject);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
-
-
     virtual void Initialize();
 
-    VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) override;
+    //VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) override;
 
-    VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) override;
+    VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr& node) override;
+
 
     vtkMapper * MakeMapper() const override;
 

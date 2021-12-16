@@ -159,7 +159,7 @@ vtkTileHierarchyMapper::vtkTileHierarchyMapper()
 
 void vtkTileHierarchyMapper::SetLoader(vtkPotreeLoader *loader) {
     Loader.TakeReference(loader);
-    LoaderThread = std::make_shared<vtkTileHierarchyLoaderThread>(Loader.GetPointer());
+    LoaderThread = std::make_shared<vtkTileHierarchyLoaderThread>(Loader);
     LoaderThread->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
     BoundsInitialized = false;
 }
@@ -221,7 +221,9 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     double aspect_ratio = ren->GetTiledAspectRatio();
 
     while(!process_queue.empty()) {
-        auto node = process_queue.top();
+        auto element = process_queue.top();
+        auto node = std::get<0>(element);
+        auto node_prio = std::get<1>(element);
         process_queue.pop();
         if(intersect(cam, node->GetBoundingBox(), aspect_ratio) != OUTSIDE_FRUSTUM) {
             if(node->IsLoaded()) {
@@ -246,7 +248,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
                 }
             } else {
                 //std::cout << "Scheduling node r" << node->GetName() << " for loading" << std::endl;
-                LoaderThread->ScheduleForLoading(node);
+                LoaderThread->ScheduleForLoading(node, node_prio);
             }
         } else {
             //std::cout << "Unloading node r" << node->GetName() << " with " << node->GetSize() << " points because it is outside the frustum" << std::endl;

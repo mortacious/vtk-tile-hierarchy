@@ -101,12 +101,12 @@ class CMakeBuild(build_ext):
         print()  # Add an empty line for cleaner output
 
 setup(
-    name="vtk_tile_hierarchy",
+    name="vtk-tile-hierarchy",
     version="0.1.0",
     author="Felix Igelbrink",
     author_email="felix.igelbrink@uni-osnabrueck.de",
-    description="Hyperspace viewer component",
-    license="TBD",
+    description="Tiled hierarchical LOD support (e.g. Potree) for VTK",
+    license="MIT",
     classifiers=[
         'Private :: Do Not Upload to pypi server',
     ],

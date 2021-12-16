@@ -7,7 +7,7 @@
 #include "vtkTileHierarchyNode.h"
 
 vtkTileHierarchyLoaderThread::vtkTileHierarchyLoaderThread(vtkTileHierarchyLoader *loader)
-    : Running(true), Func(nullptr), Mutex(), Thread([this] { Run(); }) {
+    : Running(true), Func(nullptr), Mutex(), MaxInQueue(2), Thread([this] { Run(); }) {
     Loader.TakeReference(loader);
 }
 
@@ -30,16 +30,16 @@ void vtkTileHierarchyLoaderThread::SetNodeLoadedCallBack(const std::function<voi
     Func = func;
 }
 
-void vtkTileHierarchyLoaderThread::ScheduleForLoading(vtkTileHierarchyNodePtr& node) {
+void vtkTileHierarchyLoaderThread::ScheduleForLoading(vtkTileHierarchyNodePtr& node, float priority) {
     if(Loader->TryGetNodeFromCache(node)) {
-        //std::cout << "Returning cached node r" << node->GetName() << std::endl;
-        //Loader->LoadNode(node); // This will be very quick
         if(Func)
             Func();
     } else {
         std::lock_guard<std::mutex> lock{Mutex};
-        //std::cout << "Scheduling load from disk for node r" << node->GetName() << std::endl;
-        NeedToLoad.push(node);
+        if(NeedToLoad.size() == MaxInQueue) {
+            NeedToLoad.popMin(); // Remove the smallest Element
+        }
+        NeedToLoad.push(std::make_pair(node, priority));
         Cond.notify_one();
     }
 }
@@ -53,18 +53,13 @@ void vtkTileHierarchyLoaderThread::Run() {
                 return;
         }
 
-        //std::cout << "Checking for new node to load " << std::endl;
-        auto node = NeedToLoad.front();
-        NeedToLoad.pop();
+        auto node = NeedToLoad.popMax().first;
         if(node->IsLoaded()) {
-            //std::cout << "Node r" << node->GetName() << "Is already loaded." << std::endl;
             continue; // skip already loaded nodes
         }
 
         lock.unlock();
-        //std::cout << "Loading node r" << node->GetName() << std::endl;
         Loader->LoadNode(node);
-        //std::cout << "Loaded node r" << node->GetName() << " with " << node->GetSize() << "points" << std::endl;
 
         if(Func)
             Func();

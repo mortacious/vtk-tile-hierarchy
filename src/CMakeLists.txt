@@ -7,8 +7,10 @@ set(classes
   vtkPotreeMetaData
   vtkTileHierarchyLoaderThread)
 
+set(additional_srcs
+        fileDownload.cxx)
 vtk_module_add_module(vtkTileHierarchy
-  CLASSES ${classes})
+  CLASSES ${classes} SOURCES ${additional_srcs})
 
 vtk_module_link(vtkTileHierarchy
-        PUBLIC jsoncpp)
+        PUBLIC jsoncpp ${CURL_LIBRARIES})

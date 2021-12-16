@@ -17,28 +17,28 @@ size_t vtkTileHierarchyLoader::TileTreeNodeSize::operator()(const vtkTileHierarc
 }
 
 vtkTileHierarchyLoader::vtkTileHierarchyLoader()
-    : MapperTemplate(vtkDataSetMapper::New()), RootNode(nullptr), Cache(15000000) {
-    MapperTemplate->SetColorModeToMapScalars();
-    MapperTemplate->SetScalarModeToUsePointData();
-    MapperTemplate->SetStatic(true);
+    : RootNode(nullptr), Cache(15000000) {
+    //MapperTemplate->SetColorModeToMapScalars();
+    //MapperTemplate->SetScalarModeToUsePointData();
+    //MapperTemplate->SetStatic(true);
 
 }
 
-void vtkTileHierarchyLoader::SetMapperTemplate(vtkMapper *mapper) {
-    MapperTemplate.TakeReference(mapper);
-}
-
-vtkMapper * vtkTileHierarchyLoader::GetMapperTemplate() {
-    return MapperTemplate.Get();
-}
+//void vtkTileHierarchyLoader::SetMapperTemplate(vtkMapper *mapper) {
+//    MapperTemplate.TakeReference(mapper);
+//}
+//
+//vtkMapper * vtkTileHierarchyLoader::GetMapperTemplate() {
+//    return MapperTemplate.Get();
+//}
 
 void vtkTileHierarchyLoader::PrintSelf(ostream &os, vtkIndent indent) {
     Superclass::PrintSelf(os, indent);
 }
 
-bool vtkTileHierarchyLoader::IsCached(const vtkTileHierarchyNodePtr &node) const {
-    return Cache.exist(node);
-}
+//bool vtkTileHierarchyLoader::IsCached(const vtkTileHierarchyNodePtr &node) const {
+//    return Cache.exist(node);
+//}
 
 vtkTileHierarchyNodePtr vtkTileHierarchyLoader::GetRootNode() {
     if(!RootNode) Initialize();

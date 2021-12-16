@@ -19,14 +19,23 @@
     JSON_GET_EX(Type, Var, Data, Key, "missing " #Type " key: " Key)
 
 
-void vtkPotreeMetaData::ReadFromJson(const std::string &file_name) {
-    std::ifstream f(file_name.c_str());
-    if(!f.good()) throw std::runtime_error(std::string("cannot open file: ") + file_name);
+void vtkPotreeMetaData::Parse(const std::string path, std::istream &input) {
+    //std::ifstream f(file_name.c_str());
+
+    if(path.rfind("http://", 0)) {
+        is_file_ = false;
+    } else {
+        is_file_ = true;
+    }
+    cloud_path_ = fs::path(path).parent_path();
+    std::cout << "Parsing cloud at path " << cloud_path_ << std::endl;
+
+    if(!input.good()) throw std::runtime_error("cannot read from stream");
 
     Json::Reader reader;
     Json::Value data;
 
-    if(!reader.parse(f, data, false)) {
+    if(!reader.parse(input, data, false)) {
         throw std::runtime_error(std::string("cannot parse meta data: ")
                                  + reader.getFormattedErrorMessages());
     }
@@ -62,7 +71,6 @@ void vtkPotreeMetaData::ReadFromJson(const std::string &file_name) {
         point_byte_size_ += sz;
     }
 
-    cloud_path_ = fs::path(file_name).parent_path();
 }
 
 size_t vtkPotreeMetaData::SizeOf(const std::string &attr) {

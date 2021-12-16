@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <istream>
 
 namespace fs=std::filesystem;
 
@@ -19,11 +20,12 @@ public:
         return point_count_;
     }
 
-    void ReadFromJson(const std::string& file_name);
+    void Parse(const std::string path, std::istream& input);
     static size_t SizeOf(const std::string& attr);
 private:
     friend class vtkPotreeLoader;
 
+    bool is_file_;
     fs::path octree_dir_;
     fs::path cloud_path_;
     size_t point_count_ = 0;

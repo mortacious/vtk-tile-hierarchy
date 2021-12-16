@@ -25,13 +25,16 @@ template<class T, class P>
 class PriorityQueue
 {
 public:
+    using Element = std::tuple<T, P>;
+
     void push(const T& item, const P& priority)
     {
         queue_.emplace(item, priority);
     }
-    const T& top() const
+
+    Element top() const
     {
-        return std::get<0>(queue_.top());
+        return queue_.top();
     }
     bool empty() const
     {
@@ -51,7 +54,6 @@ public:
     }
 
 private:
-    using Element = std::tuple<T, P>;
     struct Compare
     {
         bool operator()(const Element& e1, const Element& e2)

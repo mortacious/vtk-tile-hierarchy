@@ -5,6 +5,7 @@
 #include "vtkPotreeLoader.h"
 #include "vtkPotreeMetaData.h"
 #include "vtkPointHierarchyNode.h"
+#include "fileDownload.h"
 #include <vtkBoundingBox.h>
 #include <vtkVector.h>
 #include <vtkPolyData.h>
@@ -25,37 +26,60 @@ namespace fs=std::filesystem;
 vtkStandardNewMacro(vtkPotreeLoader);
 
 vtkPotreeLoader::vtkPotreeLoader()
-    : Path()
+    : Path(), Location(DatasetLoc::UNDEFINED)
 {
-    MapperTemplate = vtkSmartPointer<vtkPointGaussianMapper>::New();
+    //MapperTemplate = vtkSmartPointer<vtkPointGaussianMapper>::New();
 }
 
 bool vtkPotreeLoader::IsValidPotree(const std::string& path, std::string& error_msg) {
     fs::path p = {path.c_str()};
     error_msg.clear();
-    if(!fs::is_directory(p)) {
-        error_msg = "not an existing folder";
+    auto fname = p.filename().string();
+    std::cout << fname << std::endl;
+    if(fname != "cloud.js" and fname != "metadata.json") {
+        error_msg = "not a Potree dataset";
         return false;
     }
-    if(fs::is_regular_file(p / "metadata.json")) {
-        error_msg = "unsupported Potree 2.0 format";
-        return false;
-    }
-    if(!fs::is_regular_file(p / "cloud.js")) {
-        error_msg = "not a Potree folder";
-        return false;
-    }
+//    if(!fs::is_directory(p)) {
+//        error_msg = "not an existing folder";
+//        return false;
+//    }
+//    if(fs::is_regular_file(p / "metadata.json")) {
+//        error_msg = "unsupported Potree 2.0 format";
+//        return false;
+//    }
+//    if(!fs::is_regular_file(p / "cloud.js")) {
+//        error_msg = "not a Potree folder";
+//        return false;
+//    }
     return true;
 }
 
-std::istream vtkPotreeLoader::FetchFile(const std::string &filename) const {
-    if(filename.rfind("http://", 0)) {
-        // this is an url so fetch the file from the remote location
+std::unique_ptr<std::istream> vtkPotreeLoader::FetchFile(const std::string &filename) const {
+    std::unique_ptr<std::istream> res;
+    switch(Location) {
+        case DatasetLoc::FILESYSTEM:
+            // this is a file
+            res = std::make_unique<std::ifstream>(filename.c_str());
+            //std::cout << "Filesystem" << std::endl;
+            break;
+        case DatasetLoc::REMOTE:
+            // this is an url so fetch the file from the remote location
+            res = DownloadFile(filename);
+            //std::cout << "Remote" << std::endl;
+            break;
+        default:
+            throw std::runtime_error("Unsupported dataset location");
     }
+
+    if(!res->good())
+        throw std::runtime_error(std::string{"Failed to fetch file: "} + filename);
+    return res;
 }
 
 std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::string &extension) const {
     fs::path octree_dir = MetaData->cloud_path_ / MetaData->octree_dir_;
+    //std::cout << "Octree dir" << octree_dir << std::endl;
     fs::path result;
     std::size_t levels = name.length() / MetaData->hierarchy_step_size_;
 
@@ -70,12 +94,20 @@ std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::
 }
 
 void vtkPotreeLoader::LoadMetaData() {
+    if(Path.rfind("http://", 0) == 0) {
+        Location = DatasetLoc::REMOTE;
+    } else {
+        Location = DatasetLoc::FILESYSTEM;
+    }
+
     std::cout << "Loading Metadata from " << Path << std::endl;
     std::string error_msg;
     if(!IsValidPotree(Path, error_msg)) throw std::runtime_error(error_msg);
-    auto cloud_file = fs::path(Path.c_str()) / "cloud.js";
+
+    //auto cloud_file = fs::path(Path.c_str());// / "cloud.js";
     MetaData = std::make_unique<vtkPotreeMetaData>();
-    MetaData->ReadFromJson(cloud_file.string());
+    auto stream = FetchFile(Path);
+    MetaData->Parse(Path, *stream);
     std::cout << "Loaded Metadata. Point Count: " << MetaData->point_count_ << std::endl;
 }
 
@@ -84,25 +116,31 @@ void vtkPotreeLoader::Initialize() {
         LoadMetaData();
     }
     auto root_node = std::make_shared<vtkPointHierarchyNode>("", MetaData->bounding_box_);
-    LoadNodeHierarchy(root_node);
+    std::cout << "Loading hierarchy" << std::endl;
+    size_t points_loaded = 0;
+    LoadNodeHierarchy(root_node, points_loaded);
+    std::cout << "Done" << std::endl;
     RootNode = root_node;
 }
 
-void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_node) const {
+void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_node, size_t& points_loaded) const {
     std::queue<vtkPointHierarchyNodePtr> pending_nodes;
     pending_nodes.push(root_node);
 
     char cfg[5];
     fs::path hrc_file = CreateFileName(root_node->GetName(), ".hrc");
-    std::ifstream f{hrc_file.c_str()};
+    auto f = FetchFile(hrc_file);
+    //std::ifstream f{hrc_file.c_str()};
 
-    if(!f.good())
+    if(!f->good())
         throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
-    f.read(cfg, 5);
-    while(f.good())
+    f->read(cfg, 5);
+    while(f->good())
     {
         auto node = pending_nodes.front();
         pending_nodes.pop();
+        points_loaded += *((uint32_t*)&cfg[1]);
+        std::cout << points_loaded << "/" << MetaData->point_count_ << std::endl;
         for(int j=0; j<8; ++j) {
             if(cfg[0] & (1 << j)) {
                 if(!node->Children[j]) {
@@ -112,7 +150,7 @@ void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_nod
                 pending_nodes.push(std::dynamic_pointer_cast<vtkPointHierarchyNode>(node->Children[j]));
             }
         }
-        f.read(cfg, 5); // read next node
+        f->read(cfg, 5); // read next node
     }
 
     std::unordered_set<vtkPointHierarchyNode*> seen;    // save the shared_ptr copy overhead and just
@@ -122,8 +160,9 @@ void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_nod
         auto node = pending_nodes.front()->Parent.lock();
         pending_nodes.pop();
         if(node && seen.insert(dynamic_cast<vtkPointHierarchyNode*>(node.get())).second)
-            LoadNodeHierarchy(std::dynamic_pointer_cast<vtkPointHierarchyNode>(node));
+            LoadNodeHierarchy(std::dynamic_pointer_cast<vtkPointHierarchyNode>(node), points_loaded);
     }
+
 }
 
 vtkBoundingBox vtkPotreeLoader::CreateChildBB(const vtkBoundingBox &parent, int index) {
@@ -158,20 +197,23 @@ void vtkPotreeLoader::FetchNode(vtkTileHierarchyNodePtr &node) {
     fs::path bin_file = CreateFileName(node->GetName(), ".bin");
 
     //std::cout << "Loading node data from file " << bin_file.string() << std::endl;
-    if (!fs::is_regular_file(bin_file))
-    {
-        throw std::runtime_error(std::string("file not found: ") + bin_file.string());
-    }
-    std::size_t size = fs::file_size(bin_file);
-    std::ifstream f{bin_file.c_str()};
-    if (!f.good())
+//    if (!fs::is_regular_file(bin_file))
+//    {
+//        throw std::runtime_error(std::string("file not found: ") + bin_file.string());
+//    }
+    //std::size_t size = fs::file_size(bin_file);
+    //std::ifstream f{bin_file.c_str()};
+    auto f = FetchFile(bin_file);
+    if (!f->good())
     {
         throw std::runtime_error(std::string("failed to open file: ") + bin_file.string());
     }
-    std::vector<char> data;
-    data.resize(size);
-    if (!f.read(data.data(), size))
-    {
+    //std::vector<char> data;
+    auto eos = std::istreambuf_iterator<char>();
+    auto data = std::vector<char>(std::istreambuf_iterator<char>(*f), eos);
+    //data.resize(size);
+    //if (!f.read(data.data(), size))
+    if(data.size() == 0) {
         throw std::runtime_error(std::string("failed to read file: ") + bin_file.string());
     }
     std::size_t point_count = data.size() / MetaData->point_byte_size_;

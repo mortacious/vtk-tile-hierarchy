@@ -45,24 +45,31 @@ public:
 
     static bool IsValidPotree(const std::string& path, std::string& error_msg);
 protected:
+    enum class DatasetLoc {
+        UNDEFINED = 0,
+        FILESYSTEM,
+        REMOTE
+    };
+
     vtkPotreeLoader();
     ~vtkPotreeLoader() = default;
 
-    using vtkTileHierarchyLoader::SetMapperTemplate;
+    //using vtkTileHierarchyLoader::SetMapperTemplate;
 
     vtkMapper* GetTemplateMapper();
 
     void LoadMetaData();
-    void LoadNodeHierarchy(const vtkPointHierarchyNodePtr& root_node) const;
+    void LoadNodeHierarchy(const vtkPointHierarchyNodePtr& root_node, size_t& points_loaded) const;
     void LoadNodeFromFile(vtkPointHierarchyNodePtr& node);
 
-    std::istream FetchFile(const std::string& filename) const;
+    std::unique_ptr<std::istream> FetchFile(const std::string& filename) const;
 
     std::string CreateFileName(const std::string& name, const std::string& extension) const;
     static vtkBoundingBox CreateChildBB(const vtkBoundingBox& parent,
                               int index);
 
     std::string Path;
+    DatasetLoc Location;
     std::unique_ptr<vtkPotreeMetaData> MetaData;
 private:
     vtkPotreeLoader(const vtkPotreeLoader&) = delete;

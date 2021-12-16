@@ -23,6 +23,11 @@ if(${VTK_VERSION} VERSION_LESS 9.0)
     message(FATAL_ERROR "VTK >= 9.0 is REQUIRED")
 endif()
 
+find_package(CURL REQUIRED)
+if(CURL_FOUND)
+    include_directories(${CURL_INCLUDE_DIR})
+endif()
+
 
 include(GNUInstallDirs)
 

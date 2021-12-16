@@ -36,11 +36,11 @@ public:
 
     virtual vtkSmartPointer<vtkMapper> MakeMapper() const;
 
-    bool IsCached(const vtkTileHierarchyNodePtr& node) const;
+    //bool IsCached(const vtkTileHierarchyNodePtr& node) const;
 
-    void SetMapperTemplate(vtkMapper* mapper);
+    //void SetMapperTemplate(vtkMapper* mapper);
 
-    vtkMapper* GetMapperTemplate();
+    //vtkMapper* GetMapperTemplate();
 
     void SetCacheSize(size_t cs) {
         Cache.max_cache_size(cs);
@@ -60,7 +60,7 @@ protected:
         size_t operator()(const vtkTileHierarchyNodePtr & k , const std::pair<vtkSmartPointer<vtkMapper>, size_t>& v) const;
     };
 
-    vtkSmartPointer<vtkMapper> MapperTemplate;
+    //vtkSmartPointer<vtkMapper> MapperTemplate;
     vtkTileHierarchyNodePtr RootNode;
 
     using LRUCacheType = LRUCache<vtkTileHierarchyNodePtr, std::pair<vtkSmartPointer<vtkMapper>, size_t>, TileTreeNodeSize>;

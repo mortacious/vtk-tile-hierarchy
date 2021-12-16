@@ -119,6 +119,7 @@ void vtkPotreeLoader::Initialize() {
     std::cout << "Loading hierarchy" << std::endl;
     size_t points_loaded = 0;
     LoadNodeHierarchy(root_node, points_loaded);
+    std::cout << "\r" <<std::endl;
     std::cout << "Done" << std::endl;
     RootNode = root_node;
 }
@@ -135,12 +136,13 @@ void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_nod
     if(!f->good())
         throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
     f->read(cfg, 5);
+    std::cout << 0.0 << std::flush;
     while(f->good())
     {
         auto node = pending_nodes.front();
         pending_nodes.pop();
         points_loaded += *((uint32_t*)&cfg[1]);
-        std::cout << points_loaded << "/" << MetaData->point_count_ << std::endl;
+        std::cout << "\r" << static_cast<double>(points_loaded)/MetaData->point_count_ * 100 << std::flush;
         for(int j=0; j<8; ++j) {
             if(cfg[0] & (1 << j)) {
                 if(!node->Children[j]) {

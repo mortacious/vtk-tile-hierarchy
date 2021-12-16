@@ -31,9 +31,9 @@ void vtkTileHierarchyLoaderThread::SetNodeLoadedCallBack(const std::function<voi
 }
 
 void vtkTileHierarchyLoaderThread::ScheduleForLoading(vtkTileHierarchyNodePtr& node) {
-    if(Loader->IsCached(node)) {
+    if(Loader->TryGetNodeFromCache(node)) {
         //std::cout << "Returning cached node r" << node->GetName() << std::endl;
-        Loader->LoadNode(node); // This will be very quick
+        //Loader->LoadNode(node); // This will be very quick
         if(Func)
             Func();
     } else {

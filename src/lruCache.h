@@ -100,10 +100,16 @@ public:
     void erase(const KEY_T& key) {
         //std::lock_guard<std::mutex> lock{mutex_};
         auto it = item_map_.find(key);
+        current_cache_size_ -= func_(it->first, it->second->second);
         item_list_.erase(it->second);
         item_map_.erase(it->first);
-        current_cache_size_ -= func_(it->first, it->second->second);
 
+    }
+
+    VAL_T pop(const KEY_T &key) {
+        auto val = get(key);
+        erase(key);
+        return val;
     }
 
 };

@@ -48,6 +48,12 @@ bool vtkPotreeLoader::IsValidPotree(const std::string& path, std::string& error_
     return true;
 }
 
+std::istream vtkPotreeLoader::FetchFile(const std::string &filename) const {
+    if(filename.rfind("http://", 0)) {
+        // this is an url so fetch the file from the remote location
+    }
+}
+
 std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::string &extension) const {
     fs::path octree_dir = MetaData->cloud_path_ / MetaData->octree_dir_;
     fs::path result;
@@ -56,6 +62,7 @@ std::string vtkPotreeLoader::CreateFileName(const std::string &name, const std::
     for(std::size_t i = 0; i < levels; ++i) {
         result /= name.substr(i * MetaData->hierarchy_step_size_, MetaData->hierarchy_step_size_);
     }
+
     result /= std::string("r") + name + extension;
     if(fs::is_regular_file(octree_dir / "u" / result))
         return octree_dir / "u" / result;
@@ -87,8 +94,8 @@ void vtkPotreeLoader::LoadNodeHierarchy(const vtkPointHierarchyNodePtr &root_nod
 
     char cfg[5];
     fs::path hrc_file = CreateFileName(root_node->GetName(), ".hrc");
-    //std::cout << "Loading from hrc file: " << hrc_file.string() << std::endl;
     std::ifstream f{hrc_file.c_str()};
+
     if(!f.good())
         throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
     f.read(cfg, 5);
@@ -147,6 +154,7 @@ vtkBoundingBox vtkPotreeLoader::CreateChildBB(const vtkBoundingBox &parent, int 
 }
 
 void vtkPotreeLoader::FetchNode(vtkTileHierarchyNodePtr &node) {
+    assert(!node->Mapper); // make sure the node is definitely not loaded
     fs::path bin_file = CreateFileName(node->GetName(), ".bin");
 
     //std::cout << "Loading node data from file " << bin_file.string() << std::endl;
@@ -242,14 +250,14 @@ void vtkPotreeLoader::FetchNode(vtkTileHierarchyNodePtr &node) {
         polydata->GetPointData()->SetScalars(colors);
         polydata->GetPointData()->SetActiveScalars("Colors");
         //std::cout << "Done with polydata" << std::endl;
-        vtkMapper* mapper = MakeMapper();
+        auto mapper = MakeMapper();
         mapper->SetInputDataObject(polydata);
         //mapper->GetLookupTable()->SetVectorModeToRGBColors();
         //mapper->GetLookupTable().SetNumberOfTableValues(256);
 
         //mapper->SetColorModeToDirectScalars();
         // update the node with the mapper
-        node->Mapper.TakeReference(mapper);
+        node->Mapper = vtkSmartPointer<vtkMapper>(std::move(mapper));
         node->Size = point_count;
 
         //std::cout << "Done loading node r" << node->GetName() << std::endl;
@@ -260,9 +268,12 @@ void vtkPotreeLoader::PrintSelf(ostream &os, vtkIndent indent) {
     vtkTileHierarchyLoader::PrintSelf(os, indent);
 }
 
-vtkMapper * vtkPotreeLoader::MakeMapper() const {
+vtkSmartPointer<vtkMapper> vtkPotreeLoader::MakeMapper() const {
     //std::cout << "Making mapper" << std::endl;
-    auto mapper = vtkPointGaussianMapper::SafeDownCast(vtkTileHierarchyLoader::MakeMapper());
+
+    auto mapper = vtkSmartPointer<vtkPointGaussianMapper>::New();
+    assert(mapper->GetReferenceCount() == 1);
+    mapper->SetStatic(true);
     mapper->SetEmissive(false);
     mapper->SetScalarModeToUsePointData();
     mapper->SetScaleFactor(0);

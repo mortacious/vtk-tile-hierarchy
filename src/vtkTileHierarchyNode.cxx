@@ -6,6 +6,7 @@
 #include "vtkTileHierarchyLoader.h"
 #include "vtkTileHierarchyMapper.h"
 #include <vtkWindow.h>
+#include <vtkMapper.h>
 #include <mutex>
 
 vtkTileHierarchyNode::vtkTileHierarchyNode(const std::string& name, const vtkBoundingBox& bounding_box,
@@ -26,6 +27,10 @@ void vtkTileHierarchyNode::Render(vtkRenderer *ren, vtkActor *a) {
     if(!Mapper) return;
 
     Mapper->Render(ren, a);
+}
+
+bool vtkTileHierarchyNode::IsLoaded() const {
+    return Mapper;
 }
 
 vtkTileHierarchyNodePtr vtkTileHierarchyNode::GetChild(vtkIdType idx) {

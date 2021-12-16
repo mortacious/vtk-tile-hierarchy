@@ -33,7 +33,7 @@ public:
     VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr& node) override;
 
 
-    vtkMapper * MakeMapper() const override;
+    vtkSmartPointer<vtkMapper> MakeMapper() const override;
 
     void SetPath(const std::string& path) {
         Path = path;
@@ -55,6 +55,8 @@ protected:
     void LoadMetaData();
     void LoadNodeHierarchy(const vtkPointHierarchyNodePtr& root_node) const;
     void LoadNodeFromFile(vtkPointHierarchyNodePtr& node);
+
+    std::istream FetchFile(const std::string& filename) const;
 
     std::string CreateFileName(const std::string& name, const std::string& extension) const;
     static vtkBoundingBox CreateChildBB(const vtkBoundingBox& parent,

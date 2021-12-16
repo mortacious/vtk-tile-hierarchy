@@ -25,6 +25,7 @@ void vtkPotreeMetaData::ReadFromJson(const std::string &file_name) {
 
     Json::Reader reader;
     Json::Value data;
+
     if(!reader.parse(f, data, false)) {
         throw std::runtime_error(std::string("cannot parse meta data: ")
                                  + reader.getFormattedErrorMessages());

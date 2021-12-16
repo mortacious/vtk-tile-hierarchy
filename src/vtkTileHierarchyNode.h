@@ -57,9 +57,7 @@ public:
 
     void SetNumChildren(unsigned int num_children);
 
-    bool IsLoaded() const {
-        return Mapper != nullptr;
-    }
+    bool IsLoaded() const;
 
     virtual void Render(vtkRenderer* ren, vtkActor* a);
 

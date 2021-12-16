@@ -17,6 +17,7 @@ class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
 class vtkMapper;
 
+class vtkTileHierarchyLoaderThread;
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoader: public vtkObject {
 public:
@@ -31,7 +32,9 @@ public:
 
     VTK_WRAPEXCLUDE virtual void FetchNode(vtkTileHierarchyNodePtr& node) = 0;
 
-    virtual vtkMapper* MakeMapper() const;
+    VTK_WRAPEXCLUDE bool TryGetNodeFromCache(vtkTileHierarchyNodePtr& node);
+
+    virtual vtkSmartPointer<vtkMapper> MakeMapper() const;
 
     bool IsCached(const vtkTileHierarchyNodePtr& node) const;
 
@@ -49,6 +52,7 @@ public:
 
     vtkTileHierarchyNodePtr GetRootNode();
 protected:
+    friend class vtkTileHierarchyLoaderThread;
     vtkTileHierarchyLoader();
     ~vtkTileHierarchyLoader() override = default;
 

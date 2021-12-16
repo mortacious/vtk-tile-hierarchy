@@ -4,12 +4,15 @@
 
 #include "vtkTileHierarchyLoader.h"
 #include "vtkTileHierarchyNode.h"
+#include "vtkTileHierarchyLoaderThread.h"
 #include <vtkBoundingBox.h>
 #include <vtkObjectFactory.h>
 #include <vtkMapper.h>
 #include <vtkDataSetMapper.h>
 
+
 size_t vtkTileHierarchyLoader::TileTreeNodeSize::operator()(const vtkTileHierarchyNodePtr &k, const std::pair<vtkSmartPointer<vtkMapper>, size_t> &v) const {
+    if(!k) return 0;
     return k->GetSize();
 }
 
@@ -42,28 +45,33 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoader::GetRootNode() {
     return RootNode;
 }
 
-vtkMapper * vtkTileHierarchyLoader::MakeMapper() const {
-    vtkMapper* mapper = MapperTemplate->NewInstance();
+vtkSmartPointer<vtkMapper> vtkTileHierarchyLoader::MakeMapper() const {
+    //auto mapper = vtkSmartPointer<vtkMapper>::NewInstance(MapperTemplate);
+    auto mapper = vtkSmartPointer<vtkDataSetMapper>::New();
     assert(mapper->GetReferenceCount() == 1);
-    mapper->ShallowCopy(MapperTemplate);
     mapper->SetStatic(true);
     return mapper;
 }
 
-void vtkTileHierarchyLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
+bool vtkTileHierarchyLoader::TryGetNodeFromCache(vtkTileHierarchyNodePtr &node) {
     std::unique_lock<std::mutex> node_lock{node->Mutex};
     if(Cache.exist(node)) {
         std::scoped_lock<std::mutex> cache_lock{CacheMutex};
-        auto val = Cache.get(node);
+        auto val = Cache.pop(node);
         node->Mapper = vtkSmartPointer(std::move(val.first));
         node->Size = val.second;
-        Cache.erase(node); // Remove the node from cache as long as it is used by the mapper
+        //Cache.erase(node); // Remove the node from cache as long as it is used by the mapper
         node_lock.unlock();
-    } else {
-        node_lock.unlock();
+        return true;
+    }
+    if(node_lock) node_lock.unlock();
+    return false;
+}
+
+void vtkTileHierarchyLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
+    if(!TryGetNodeFromCache(node) && !node->IsLoaded()) { // avoid loading nodes that are already in use or cached
         FetchNode(node);
     }
-
     // recursively load all nodes below as well
     if (recursive)
     {

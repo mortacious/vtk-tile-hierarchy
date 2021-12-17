@@ -5,7 +5,8 @@ set(classes
   vtkPotreeLoader
   vtkTileHierarchyMapper
   vtkPotreeMetaData
-  vtkTileHierarchyLoaderThread)
+  vtkTileHierarchyLoaderThread
+  vtkGenericLoader)
 
 set(additional_srcs
         fileDownload.cxx)

@@ -5,6 +5,8 @@ set (CMAKE_CXX_STANDARD 17)
 set(version 1.0)
 project(vtkTileHierarchy)
 
+
+option(BUILD_PYTHON "Build the python wrappers" OFF)
 message(STATUS "Rpath is: ${CMAKE_INSTALL_RPATH}")
 
 set(VTK_COMPONENTS
@@ -38,8 +40,12 @@ if (_vtk_libtype STREQUAL "STATIC_LIBRARY")
 endif ()
 
 option(BUILD_SHARED_LIBS "Build shared or static libraries" "${_shared_default}")
-set(OUTPUT_DIR ".")
-message("LIBRARY_OUTPUT_DIR ${OUTPUT_DIR}/vtk_extensions/lib  | ${CMAKE_INSTALL_LIBDIR}")
+if(BUILD_PYTHON)
+    message(INFO "Building python module")
+    set(OUTPUT_DIR "vtk_tile_hierarchy/lib")
+else()
+    set(OUTPUT_DIR ${LIBRARY_OUTPUT_DIRECTORY})
+endif()
 
 # First we scan the modules in our project to find out the dependency graph
 # between them.
@@ -56,19 +62,18 @@ vtk_module_scan(
 )
 # Build the module we just scanned.
 vtk_module_build(MODULES ${modules}
-        LIBRARY_DESTINATION "${OUTPUT_DIR}/vtk_tile_hierarchy/lib"
+        LIBRARY_DESTINATION "${OUTPUT_DIR}"
         INSTALL_HEADERS OFF
         )
 
-# Wrap it with Python.
-vtk_module_wrap_python(
-        MODULES         ${modules}
-        PYTHON_PACKAGE  "vtk_tile_hierarchy"
-        MODULE_DESTINATION "${OUTPUT_DIR}"
-        LIBRARY_DESTINATION "${OUTPUT_DIR}/vtk_tile_hierarchy/lib"
-        # Static Python modules are almost never wanted.
-        BUILD_STATIC    OFF
-        INSTALL_HEADERS OFF)
-
-# Create an `__init__.py` for the wrapped module.
-#file(WRITE "${CMAKE_INSTALL_PREFIX}/vtk_extensions/__init__.py" "from .vtkHyperspaceExtensions import *")
+if(BUILD_PYTHON)
+    # Wrap it with Python.
+    vtk_module_wrap_python(
+            MODULES         ${modules}
+            PYTHON_PACKAGE  "vtk_tile_hierarchy"
+            MODULE_DESTINATION "."
+            LIBRARY_DESTINATION "${OUTPUT_DIR}"
+            # Static Python modules are almost never wanted.
+            BUILD_STATIC    OFF
+            INSTALL_HEADERS OFF)
+endif()

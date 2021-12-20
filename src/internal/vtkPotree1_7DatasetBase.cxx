@@ -48,13 +48,10 @@ void vtkPotree1_7DatasetBase::LoadMetaData(const std::string& path) {
 
     auto stream = FetchFile(path);
 
-    if(!stream->good()) throw std::runtime_error("cannot read from stream");
-
     Json::Reader reader;
     Json::Value data;
 
-    std::istream& stream_ref = *stream;
-    if(!reader.parse(stream_ref, data, false)) {
+    if(!reader.parse(stream, data, false)) {
         throw std::runtime_error(std::string("cannot parse meta data: ")
                                  + reader.getFormattedErrorMessages());
     }
@@ -127,22 +124,20 @@ void vtkPotree1_7DatasetBase::LoadNodeHierarchy(vtkPointHierarchyNodePtr &root_n
     std::queue<vtkPointHierarchyNodePtr> pending_nodes;
     pending_nodes.push(root_node);
 
-    char cfg[5];
+    //char cfg[5];
     fs::path hrc_file = CreateFileName(root_node->GetName(), ".hrc");
-    auto f = FetchFile(hrc_file.string());
-
-    if(!f->good())
-        throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
-    f->read(cfg, 5);
+    auto data = FetchFile(hrc_file.string());
+    //if(!f->good())
+    //    throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
+    //f->read(cfg, 5);
     std::cout << 0.0 << std::flush;
-    while(f->good())
-    {
+    for(size_t pos = 0; pos < data.size(); pos+=5) {
         auto node = pending_nodes.front();
         pending_nodes.pop();
-        points_loaded += *((uint32_t*)&cfg[1]);
+        points_loaded += *((uint32_t*)&data[pos + 1]);
         std::cout << "\r" << static_cast<double>(points_loaded)/point_count_ * 100 << std::flush;
         for(int j=0; j<8; ++j) {
-            if(cfg[0] & (1 << j)) {
+            if(data[pos] & (1 << j)) {
                 if(!node->HasChild(j)) {
                     auto child = vtkPointHierarchyNodePtr::New();
                     child->SetBoundingBox(CreateChildBB(node->GetBoundingBox(), j));
@@ -155,7 +150,7 @@ void vtkPotree1_7DatasetBase::LoadNodeHierarchy(vtkPointHierarchyNodePtr &root_n
                 pending_nodes.push(vtkPointHierarchyNode::SafeDownCast(node->GetChild(j)));
             }
         }
-        f->read(cfg, 5); // read next node
+        //f->read(cfg, 5); // read next node
     }
 
     std::unordered_set<vtkPointHierarchyNode*> seen;    // save the shared_ptr copy overhead and just
@@ -202,14 +197,8 @@ size_t vtkPotree1_7DatasetBase::LoadNode(const vtkPointHierarchyNodePtr &node,
                                          vtkSmartPointer<vtkPolyData> &polydata) const {
     fs::path bin_file = CreateFileName(node->GetName(), ".bin");
 
-    auto f = FetchFile(bin_file);
-    if (!f->good())
-    {
-        throw std::runtime_error(std::string("failed to open file: ") + bin_file.string());
-    }
-    auto eos = std::istreambuf_iterator<char>();
-    auto data = std::vector<char>(std::istreambuf_iterator<char>(*f), eos);
-    if(data.size() == 0) {
+    auto data = FetchFile(bin_file);
+    if(data.empty()) {
         throw std::runtime_error(std::string("failed to read file: ") + bin_file.string());
     }
     std::size_t point_count = data.size() / point_byte_size_;

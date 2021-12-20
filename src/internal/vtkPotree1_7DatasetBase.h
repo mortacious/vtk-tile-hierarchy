@@ -17,7 +17,7 @@ class vtkPotree1_7DatasetBase: public vtkPotreeDatasetBase {
 public:
     explicit vtkPotree1_7DatasetBase();
 
-    [[nodiscard]] virtual std::unique_ptr<std::istream> FetchFile(const std::string& filename) const = 0;
+    [[nodiscard]] virtual std::string FetchFile(const std::string& filename) const = 0;
 
     static size_t SizeOf(const std::string& attr);
 

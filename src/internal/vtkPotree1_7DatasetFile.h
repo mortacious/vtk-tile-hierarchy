@@ -9,6 +9,6 @@ class vtkPotree1_7DatasetFile: public vtkPotree1_7DatasetBase {
 public:
     explicit vtkPotree1_7DatasetFile();
 
-    [[nodiscard]] std::unique_ptr<std::istream> FetchFile(const std::string& filename) const override;
+    [[nodiscard]] std::string FetchFile(const std::string& filename) const override;
 };
 

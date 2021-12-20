@@ -10,7 +10,7 @@ class vtkPotree1_7DatasetUrl: public vtkPotree1_7DatasetBase {
 public:
     explicit vtkPotree1_7DatasetUrl();
     ~vtkPotree1_7DatasetUrl();
-    [[nodiscard]] std::unique_ptr<std::istream> FetchFile(const std::string& filename) const override;
+    [[nodiscard]] std::string FetchFile(const std::string& filename) const override;
 private:
     CURL* Curl;
 };

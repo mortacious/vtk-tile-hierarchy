@@ -7,9 +7,11 @@
 vtkPotree1_7DatasetFile::vtkPotree1_7DatasetFile()
 : vtkPotree1_7DatasetBase() {}
 
-std::unique_ptr<std::istream> vtkPotree1_7DatasetFile::FetchFile(const std::string &filename) const {
+std::string vtkPotree1_7DatasetFile::FetchFile(const std::string &filename) const {
     auto res = std::make_unique<std::ifstream>(filename.c_str());
     if(!res->good())
         throw std::runtime_error(std::string{"Failed to open file: "} + filename);
-    return res;
+    auto eos = std::istreambuf_iterator<char>();
+    std::string data(std::istreambuf_iterator<char>(*res), eos);
+    return std::move(data);
 }

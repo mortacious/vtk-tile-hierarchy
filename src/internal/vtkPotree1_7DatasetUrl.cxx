@@ -20,37 +20,17 @@ vtkPotree1_7DatasetUrl::vtkPotree1_7DatasetUrl()
 }
 
 vtkPotree1_7DatasetUrl::~vtkPotree1_7DatasetUrl() {
-    //curl_easy_cleanup(Curl);
     curl_global_cleanup();
 
 }
 
-//struct MoveStreamBuf : public std::streambuf
-//{
-//    MoveStreamBuf(std::string string): str(std::move(string))
-//    {
-//        setg(string.data(), string.data(), string.data() + string.size());
-//    }
-//
-//    MoveStreamBuf(MoveStreamBuf&& other) {
-//        str = std::move(other.str);
-//    }
-//
-//    MoveStreamBuf& operator=(MoveStreamBuf&& other) {
-//        str = std::move(other.str);
-//        return *this;
-//    }
-//private:
-//    std::string str;
-//};
-
-std::unique_ptr<std::istream> vtkPotree1_7DatasetUrl::FetchFile(const std::string &filename) const {
+std::string vtkPotree1_7DatasetUrl::FetchFile(const std::string &filename) const {
     std::string result;
-    result.reserve(1000000);
+    //result.reserve(100000);
     CURLcode res;
     CURL* Curl = curl_easy_init();
     if(Curl) {
-        //std::cout << "Debug: " << url.c_str() << std::endl;
+        //std::cout << "Debug: " << istringstreamurl.c_str() << std::endl;
         curl_easy_setopt(Curl, CURLOPT_URL, filename.c_str());
         //curl_easy_setopt(Curl, CURLOPT_USERAGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.153 Safari/537.36");
         curl_easy_setopt(Curl, CURLOPT_NOPROGRESS, 1L);
@@ -65,8 +45,6 @@ std::unique_ptr<std::istream> vtkPotree1_7DatasetUrl::FetchFile(const std::strin
 
         res = curl_easy_perform(Curl);
 
-
-
         if(res != CURLE_OK) {
             // we failed
             std::stringstream ss;
@@ -75,12 +53,7 @@ std::unique_ptr<std::istream> vtkPotree1_7DatasetUrl::FetchFile(const std::strin
         }
         /* always cleanup */
         curl_easy_cleanup(Curl);
-        //curl_easy_reset(Curl);
     }
 
-
-    //std::cout << "result: " << result << std::endl;
-    //MoveStreamBuf streambuf(std::move(result));
-    return std::make_unique<std::istringstream>(result);
-    //return std::make_unique<std::istream>(&streambuf);
+    return result;
 }

@@ -7,7 +7,7 @@
 #include "vtkTileHierarchyNode.h"
 
 vtkTileHierarchyLoaderThread::vtkTileHierarchyLoaderThread(vtkSmartPointer<vtkTileHierarchyLoader> loader, unsigned int num_threads)
-    : Running(true), Func(nullptr), Mutex(), MaxInQueue(2), Threads() {
+    : Running(true), Func(nullptr), Mutex(), MaxInQueue(num_threads), Threads() {
     std::cout << "Spawning " << num_threads << " worker threads" << std::endl;
     Threads.reserve(num_threads);
     for(int i=0; i<num_threads; ++i) {

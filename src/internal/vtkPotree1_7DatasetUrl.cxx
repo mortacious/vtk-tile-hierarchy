@@ -55,5 +55,5 @@ std::string vtkPotree1_7DatasetUrl::FetchFile(const std::string &filename) const
         curl_easy_cleanup(Curl);
     }
 
-    return result;
+    return std::move(result);
 }

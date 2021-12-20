@@ -14,7 +14,14 @@
 
 
 class vtkTileHierarchyNode;
-using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
+using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
+
+// custom specialization of std::hash for node pointers
+template<>
+struct std::hash<vtkTileHierarchyNodePtr> {
+    std::size_t operator()(vtkTileHierarchyNodePtr const &s) const noexcept;
+};
+
 class vtkMapper;
 
 class vtkTileHierarchyLoaderThread;
@@ -26,9 +33,17 @@ public:
 
     virtual void Initialize() = 0;
 
-    VTK_WRAPEXCLUDE virtual void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false);
+    VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr& node) {
+        LoadNode(node, false);
+    }
 
-    VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive = false);
+    VTK_WRAPEXCLUDE virtual void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive);
+
+    VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node) {
+        UnloadNode(node, false);
+    }
+
+    VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive);
 
     VTK_WRAPEXCLUDE virtual void FetchNode(vtkTileHierarchyNodePtr& node) = 0;
 
@@ -60,7 +75,6 @@ protected:
         size_t operator()(const vtkTileHierarchyNodePtr & k , const std::pair<vtkSmartPointer<vtkMapper>, size_t>& v) const;
     };
 
-    //vtkSmartPointer<vtkMapper> MapperTemplate;
     vtkTileHierarchyNodePtr RootNode;
 
     using LRUCacheType = LRUCache<vtkTileHierarchyNodePtr, std::pair<vtkSmartPointer<vtkMapper>, size_t>, TileTreeNodeSize>;
@@ -68,9 +82,7 @@ protected:
 
     std::mutex CacheMutex;
 
-    void SetRootNode(vtkTileHierarchyNodePtr root_node) {
-        RootNode = root_node;
-    }
+    void SetRootNode(vtkTileHierarchyNodePtr root_node);
 private:
     vtkTileHierarchyLoader(const vtkTileHierarchyLoader&) = delete;
     void operator=(const vtkTileHierarchyLoader&) = delete;

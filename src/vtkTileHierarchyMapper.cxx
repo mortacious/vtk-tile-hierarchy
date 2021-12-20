@@ -17,12 +17,12 @@
 #include <vtkRenderWindowInteractor.h>
 
 
-bool is_different(const vtkMatrix4x4* first, const vtkMatrix4x4* second) {
-    for (int i = 0; i < 4; ++i)
-        for (int j = 0; j < 4; ++j)
-            if (first->GetElement(i, j) != second->GetElement(i, j)) return true;
-    return false;
-}
+//bool is_different(const vtkMatrix4x4* first, const vtkMatrix4x4* second) {
+//    for (int i = 0; i < 4; ++i)
+//        for (int j = 0; j < 4; ++j)
+//            if (first->GetElement(i, j) != second->GetElement(i, j)) return true;
+//    return false;
+//}
 
 enum FrustumCull
 {
@@ -72,100 +72,109 @@ int intersect(vtkCamera* camera, const vtkBoundingBox& bbox, double aspect_ratio
     return result;
 }
 
-class CheckVisibilityCallback: public vtkCallbackCommand {
-public:
-    static CheckVisibilityCallback* New();
-    vtkTypeMacro(CheckVisibilityCallback, vtkCallbackCommand);
-
-    // Here we Create a vtkCallbackCommand and reimplement it.
-    void Execute(vtkObject* caller, unsigned long evId, void*) override
-    {
-        std::cout << "Camera moved" << std::endl;
-        // Note the use of reinterpret_cast to cast the caller to the expected type.
-        auto camera = Mapper->Renderer->GetActiveCamera();//reinterpret_cast<vtkCamera*>(caller);
-        vtkVector3d camera_position;
-        camera->GetPosition(camera_position.GetData());
-        vtkQuaterniond camera_orientation(camera->GetOrientationWXYZ());
-        vtkSmartPointer<vtkMatrix4x4> projection_matrix;
-        projection_matrix.TakeReference(camera->GetProjectionTransformMatrix(Mapper->Renderer));
-
-        vtkVector3d camera_position_difference;
-        vtkMath::Subtract(camera_position.GetData(), LastPosition.GetData(), camera_position_difference.GetData());
-        bool projection_different = true;
-        if(LastProjection) {
-            projection_different = is_different(projection_matrix, LastProjection);
-        }
-        if (!projection_different
-            && camera_position_difference.Norm() < 0.01f
-            && (camera_orientation - LastOrientation).Norm() < 0.01f)
-            return;
-        LastPosition = camera_position;
-        LastOrientation = camera_orientation;
-        LastProjection = projection_matrix;
-        if(Mapper->Renderer)
-            //std::cout << "Re-Rendering due to moved camera" << std::endl;
-            Mapper->Renderer->GetRenderWindow()->Render(); // force a render
-    }
-    CheckVisibilityCallback(): Mapper(nullptr)
-    {
-    }
-
-    // Set pointers to any clientData or callData here.
-    vtkTileHierarchyMapper* Mapper;
-    vtkVector3d LastPosition;
-    vtkQuaterniond LastOrientation;
-    vtkSmartPointer<vtkMatrix4x4> LastProjection;
-};
-
-class ReRenderCallback: public vtkCallbackCommand {
-public:
-    static ReRenderCallback* New();
-    vtkTypeMacro(ReRenderCallback, vtkCallbackCommand);
-
-    // Here we Create a vtkCallbackCommand and reimplement it.
-    void Execute(vtkObject* caller, unsigned long evId, void*) override
-    {
-        // Note the use of reinterpret_cast to cast the caller to the expected type.
-        if (vtkCommand::TimerEvent == evId) {
-            if(Mapper->ForceUpdate && Mapper->Renderer) {
-                std::cout << "Re-rendering " << count++ << std::endl;
-                Mapper->Renderer->GetRenderWindow()->Render(); // force a render
-            }
-        }
-    }
-    ReRenderCallback(): Mapper(nullptr)
-    {
-    }
-
-    // Set pointers to any clientData or callData here.
-    vtkTileHierarchyMapper* Mapper;
-    size_t count = 0;
-};
-
-
-vtkStandardNewMacro(CheckVisibilityCallback);
-vtkStandardNewMacro(ReRenderCallback);
+//class CheckVisibilityCallback: public vtkCallbackCommand {
+//public:
+//    static CheckVisibilityCallback* New();
+//    vtkTypeMacro(CheckVisibilityCallback, vtkCallbackCommand);
+//
+//    // Here we Create a vtkCallbackCommand and reimplement it.
+//    void Execute(vtkObject* caller, unsigned long evId, void*) override
+//    {
+//        std::cout << "Camera moved" << std::endl;
+//        // Note the use of reinterpret_cast to cast the caller to the expected type.
+//        auto camera = Mapper->Renderer->GetActiveCamera();//reinterpret_cast<vtkCamera*>(caller);
+//        vtkVector3d camera_position;
+//        camera->GetPosition(camera_position.GetData());
+//        vtkQuaterniond camera_orientation(camera->GetOrientationWXYZ());
+//        vtkSmartPointer<vtkMatrix4x4> projection_matrix;
+//        projection_matrix.TakeReference(camera->GetProjectionTransformMatrix(Mapper->Renderer));
+//
+//        vtkVector3d camera_position_difference;
+//        vtkMath::Subtract(camera_position.GetData(), LastPosition.GetData(), camera_position_difference.GetData());
+//        bool projection_different = true;
+//        if(LastProjection) {
+//            projection_different = is_different(projection_matrix, LastProjection);
+//        }
+//        if (!projection_different
+//            && camera_position_difference.Norm() < 0.01f
+//            && (camera_orientation - LastOrientation).Norm() < 0.01f)
+//            return;
+//        LastPosition = camera_position;
+//        LastOrientation = camera_orientation;
+//        LastProjection = projection_matrix;
+//        if(Mapper->Renderer)
+//            //std::cout << "Re-Rendering due to moved camera" << std::endl;
+//            Mapper->Renderer->GetRenderWindow()->Render(); // force a render
+//    }
+//    CheckVisibilityCallback(): Mapper(nullptr)
+//    {
+//    }
+//
+//    // Set pointers to any clientData or callData here.
+//    vtkTileHierarchyMapper* Mapper;
+//    vtkVector3d LastPosition;
+//    vtkQuaterniond LastOrientation;
+//    vtkSmartPointer<vtkMatrix4x4> LastProjection;
+//};
+//
+//class ReRenderCallback: public vtkCallbackCommand {
+//public:
+//    static ReRenderCallback* New();
+//    vtkTypeMacro(ReRenderCallback, vtkCallbackCommand);
+//
+//    // Here we Create a vtkCallbackCommand and reimplement it.
+//    void Execute(vtkObject* caller, unsigned long evId, void*) override
+//    {
+//        // Note the use of reinterpret_cast to cast the caller to the expected type.
+//        if (vtkCommand::TimerEvent == evId) {
+//            if(Mapper->ForceUpdate && Mapper->Renderer) {
+//                std::cout << "Re-rendering " << count++ << std::endl;
+//                Mapper->Renderer->GetRenderWindow()->Render(); // force a render
+//            }
+//        }
+//    }
+//    ReRenderCallback(): Mapper(nullptr)
+//    {
+//    }
+//
+//    // Set pointers to any clientData or callData here.
+//    vtkTileHierarchyMapper* Mapper;
+//    size_t count = 0;
+//};
+//
+//
+//vtkStandardNewMacro(CheckVisibilityCallback);
+//vtkStandardNewMacro(ReRenderCallback);
 
 
 
 vtkStandardNewMacro(vtkTileHierarchyMapper);
 
 vtkTileHierarchyMapper::vtkTileHierarchyMapper()
- : BoundsInitialized(false), ForceUpdate(false), Renderer(nullptr), PointBudget(1000000), MinimumNodeSize(30.f) {
+ : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), NumThreads(2) {
     SetStatic(true); // This mapper does not use the pipeline
-    CheckVisibilityObserver->Mapper = this;
-    ReRenderObserver->Mapper = this;
 }
 
-void vtkTileHierarchyMapper::SetLoader(vtkPotreeLoader *loader) {
+void vtkTileHierarchyMapper::SetLoader(vtkPotreeLoader* loader) {
+    Register(loader);
     Loader.TakeReference(loader);
-    LoaderThread = std::make_shared<vtkTileHierarchyLoaderThread>(Loader);
+    InitLoaderThread();
+
+}
+
+void vtkTileHierarchyMapper::InitLoaderThread() {
+    LoaderThread = std::make_unique<vtkTileHierarchyLoaderThread>(Loader, NumThreads);
     LoaderThread->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
     BoundsInitialized = false;
 }
 
-vtkPotreeLoader * vtkTileHierarchyMapper::GetLoader() {
+vtkPotreeLoader* vtkTileHierarchyMapper::GetLoader() {
     return Loader;
+}
+
+void vtkTileHierarchyMapper::SetNumThreads(unsigned int num_threads) {
+    NumThreads = num_threads;
+    InitLoaderThread();
 }
 
 void vtkTileHierarchyMapper::ComputeBounds() {
@@ -199,17 +208,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     //std::cout << "Rendering" << std::endl;
     ForceUpdate = false;
 
-    if(!Renderer || Renderer.Get() != ren) {
-        if(Renderer) {
-            Renderer->GetRenderWindow()->GetInteractor()->RemoveObserver(ReRenderObserver);
-        }
-        Renderer.TakeReference(ren);
-        //Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::TimerEvent, ReRenderObserver);
-        //Renderer->GetRenderWindow()->GetInteractor()->CreateRepeatingTimer(250); // Check if nodes have been loaded 10 times a second
-        //Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::EndInteractionEvent, CheckVisibilityObserver);
-    }
-
-    if(Renderer->GetRenderWindow()->GetActualSize()[1] < 10) {
+    if(ren->GetRenderWindow()->GetActualSize()[1] < 10) {
         return; // Do not render very small screens
     }
 
@@ -217,7 +216,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     auto root_node = Loader->GetRootNode();
     process_queue.push(root_node, 0);
     std::size_t remaining_points = PointBudget;
-    auto cam = Renderer->GetActiveCamera();
+    auto cam = ren->GetActiveCamera();
     double aspect_ratio = ren->GetTiledAspectRatio();
 
     while(!process_queue.empty()) {
@@ -229,43 +228,39 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
             if(node->IsLoaded()) {
                 if(node->GetSize() <= remaining_points) {
                     remaining_points -= node->GetSize();
-                    //std::cout << "Rendering node r" << node->GetName() << " with " << node->GetSize() << " points. Budget remaining: " << remaining_points << std::endl;
                     node->Render(ren, a); // Render this node!
                     for(auto& child: node->Children) {
                         if(child) {
-                            float p = GetPriority(node, cam);
+                            float p = GetPriority(node, ren);
                             if(p > 0) {
                                 process_queue.push(child, p);
                             } else if(child->IsLoaded()) {
-                                //std::cout << "Unloading node " << child->GetName() << " with " << child->GetSize() << " points due to low visibility of " << p << std::endl;
                                 Loader->UnloadNode(child, true); // remove this child and all nodes below because they are too small
                             }
                         }
                     }
                 } else {
-                    //std::cout << "Unloading node r" << node->GetName() << " with " << node->GetSize() << " points due to point budget" << std::endl;
                     Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
                 }
             } else {
-                //std::cout << "Scheduling node r" << node->GetName() << " for loading" << std::endl;
                 LoaderThread->ScheduleForLoading(node, node_prio);
             }
         } else {
-            //std::cout << "Unloading node r" << node->GetName() << " with " << node->GetSize() << " points because it is outside the frustum" << std::endl;
             Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
 
         }
     }
-    //std::cout << "--------------------------------------Rendering Done" << std::endl;
 }
 
 
-float vtkTileHierarchyMapper::GetPriority(const vtkTileHierarchyNodePtr &node, vtkCamera* camera) const {
+float vtkTileHierarchyMapper::GetPriority(const vtkTileHierarchyNodePtr &node, vtkRenderer* ren) const {
+    auto cam = ren->GetActiveCamera();
+
     auto bbox = node->GetBoundingBox();
     vtkVector3d center;
     bbox.GetCenter(center.GetData());
     vtkVector3d camera_position;
-    camera->GetPosition(camera_position.GetData());
+    cam->GetPosition(camera_position.GetData());
 
     vtkVector3d half_size;
     bbox.GetLengths(half_size.GetData());
@@ -275,20 +270,20 @@ float vtkTileHierarchyMapper::GetPriority(const vtkTileHierarchyNodePtr &node, v
     float bounding_radius = half_size.Norm();
     float projected_size;
 
-    if(camera->GetParallelProjection()) {
+    if(cam->GetParallelProjection()) {
         projected_size = bounding_radius;
     } else {
-        float slope = std::tan(vtkMath::DegreesFromRadians(camera->GetViewAngle()));
+        float slope = std::tan(vtkMath::DegreesFromRadians(cam->GetViewAngle()));
         vtkVector3d center_pos_difference;
         vtkMath::Subtract(center.GetData(), camera_position.GetData(), center_pos_difference.GetData());
         float distance = center_pos_difference.Norm();
-        projected_size = 0.5f * Renderer->GetRenderWindow()->GetActualSize()[1] * bounding_radius / (slope * distance);
+        projected_size = 0.5f * ren->GetRenderWindow()->GetActualSize()[1] * bounding_radius / (slope * distance);
         if(projected_size < MinimumNodeSize) {
             return -1; // ignore this node
         }
     }
     vtkVector3d cam_forward;
-    camera->GetDirectionOfProjection(cam_forward.GetData());
+    cam->GetDirectionOfProjection(cam_forward.GetData());
     vtkVector3d center_pos_difference;
     vtkMath::Subtract(center.GetData(), camera_position.GetData(), center_pos_difference.GetData());
     vtkVector3d cam_to_node = center_pos_difference.Normalized();

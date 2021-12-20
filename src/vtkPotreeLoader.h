@@ -14,8 +14,8 @@
 #include <memory>
 
 class vtkPointHierarchyNode;
-using vtkPointHierarchyNodePtr = std::shared_ptr<vtkPointHierarchyNode>;
-class vtkPotreeMetaData;
+using vtkPointHierarchyNodePtr = vtkSmartPointer<vtkPointHierarchyNode>;
+class vtkPotreeDatasetBase;
 class vtkBoundingBox;
 class vtkMapper;
 
@@ -26,9 +26,7 @@ public:
     vtkTypeMacro(vtkPotreeLoader, vtkObject);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
-    virtual void Initialize();
-
-    //VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive = false) override;
+    void Initialize() override;
 
     VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr& node) override;
 
@@ -42,35 +40,12 @@ public:
     const std::string& GetPath() const {
         return Path;
     }
-
-    static bool IsValidPotree(const std::string& path, std::string& error_msg);
 protected:
-    enum class DatasetLoc {
-        UNDEFINED = 0,
-        FILESYSTEM,
-        REMOTE
-    };
-
     vtkPotreeLoader();
-    ~vtkPotreeLoader() = default;
-
-    //using vtkTileHierarchyLoader::SetMapperTemplate;
-
-    vtkMapper* GetTemplateMapper();
-
-    void LoadMetaData();
-    void LoadNodeHierarchy(const vtkPointHierarchyNodePtr& root_node, size_t& points_loaded) const;
-    void LoadNodeFromFile(vtkPointHierarchyNodePtr& node);
-
-    std::unique_ptr<std::istream> FetchFile(const std::string& filename) const;
-
-    std::string CreateFileName(const std::string& name, const std::string& extension) const;
-    static vtkBoundingBox CreateChildBB(const vtkBoundingBox& parent,
-                              int index);
+    ~vtkPotreeLoader() override = default;
 
     std::string Path;
-    DatasetLoc Location;
-    std::unique_ptr<vtkPotreeMetaData> MetaData;
+    std::unique_ptr<vtkPotreeDatasetBase> Dataset;
 private:
     vtkPotreeLoader(const vtkPotreeLoader&) = delete;
     void operator=(const vtkPotreeLoader&) = delete;

@@ -7,19 +7,16 @@
 #include "vtkTileHierarchyMapper.h"
 #include <vtkWindow.h>
 #include <vtkMapper.h>
+#include <vtkObjectFactory.h>
 #include <mutex>
 
-vtkTileHierarchyNode::vtkTileHierarchyNode(const std::string& name, const vtkBoundingBox& bounding_box,
-                                 unsigned int num_children,
-                                 std::weak_ptr<vtkTileHierarchyNode> parent)
-        : Name(name), BoundingBox(bounding_box),
-          Parent(std::move(parent)), Children(num_children, nullptr), Size(0)
-{}
+vtkStandardNewMacro(vtkTileHierarchyNode);
 
-vtkTileHierarchyNode::vtkTileHierarchyNode(const std::string& name, const vtkBoundingBox &bounding_box, unsigned int num_children)
-        : vtkTileHierarchyNode(name, bounding_box, num_children, std::weak_ptr<vtkTileHierarchyNode>()) {}
+vtkTileHierarchyNode::vtkTileHierarchyNode()
+: Parent(nullptr), Size(0) {}
 
-vtkTileHierarchyNode::~vtkTileHierarchyNode() {
+void vtkTileHierarchyNode::PrintSelf(ostream &os, vtkIndent indent) {
+    Superclass::PrintSelf(os, indent);
 }
 
 void vtkTileHierarchyNode::Render(vtkRenderer *ren, vtkActor *a) {
@@ -33,18 +30,33 @@ bool vtkTileHierarchyNode::IsLoaded() const {
     return Mapper;
 }
 
-vtkTileHierarchyNodePtr vtkTileHierarchyNode::GetChild(vtkIdType idx) {
-    return Children[idx];
-}
-
 void vtkTileHierarchyNode::SetNumChildren(unsigned int num_children) {
     Children.resize(num_children, nullptr);
+}
+
+bool vtkTileHierarchyNode::HasChild(vtkIdType idx) {
+    if(Children.size() <= idx) {
+        return false;
+    }
+    return Children[idx] != nullptr;
 }
 
 void vtkTileHierarchyNode::SetChild(vtkIdType idx, vtkTileHierarchyNodePtr child) {
     if(Children.size() <= idx) {
         SetNumChildren(idx+1);
     }
-    auto child_casted = std::dynamic_pointer_cast<vtkTileHierarchyNode>(child);
-    Children[idx] = child_casted;
+    Children[idx] = child;
+}
+
+void vtkTileHierarchyNode::ResetNode() {
+    Mapper = nullptr;
+    Size = 0;
+}
+
+void vtkTileHierarchyNode::SetMapper(vtkSmartPointer<vtkMapper> mapper) {
+    Mapper = vtkSmartPointer<vtkMapper>(std::move(mapper));
+}
+
+vtkMapper * vtkTileHierarchyNode::GetMapper() {
+    return Mapper;
 }

@@ -43,19 +43,36 @@ class vtkActor;
 
 
 class vtkPointHierarchyNode;
-using vtkPointHierarchyNodePtr = std::shared_ptr<vtkPointHierarchyNode>;
+using vtkPointHierarchyNodePtr = vtkSmartPointer<vtkPointHierarchyNode>;
 
-VTK_WRAPEXCLUDE class VTKTILEHIERARCHY_EXPORT vtkPointHierarchyNode: public vtkTileHierarchyNode
+class VTKTILEHIERARCHY_EXPORT vtkPointHierarchyNode: public vtkTileHierarchyNode
 {
 public:
-    vtkPointHierarchyNode(const std::string& name,
-                  const vtkBoundingBox& bounding_box,
-                  std::weak_ptr<vtkPointHierarchyNode> parent);
-    vtkPointHierarchyNode(const std::string& name,
-                  const vtkBoundingBox& bounding_box);
+    static vtkPointHierarchyNode* New();
+    vtkTypeMacro(vtkPointHierarchyNode, vtkTileHierarchyNode);
+    void PrintSelf(ostream& os, vtkIndent indent) override;
 
-    void Render(vtkRenderer* ren, vtkActor* a) override;
+    //void Render(vtkRenderer* ren, vtkActor* a) override;
 
+    const std::string& GetName() const {
+        return Name;
+    }
+
+    void SetName(const std::string& name) {
+        Name = name;
+    }
+
+    unsigned int GetLevel() const {
+        return Name.length();
+
+    }
+
+    vtkGetMacro(Scale, bool);
+    vtkSetMacro(Scale, bool);
 protected:
-    bool Scale;
+    vtkPointHierarchyNode();
+    ~vtkPointHierarchyNode() override = default;
+
+    std::string Name;
+    bool Scale = true;
 };

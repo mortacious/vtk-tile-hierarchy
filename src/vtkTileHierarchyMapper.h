@@ -18,11 +18,11 @@ class vtkWindow;
 class vtkCamera;
 class vtkPotreeLoader;
 class vtkTileHierarchyNode;
-using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
+using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
 class vtkTileHierarchyLoaderThread;
 
-class CheckVisibilityCallback;
-class ReRenderCallback;
+//class CheckVisibilityCallback;
+//class ReRenderCallback;
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyMapper : public vtkMapper
 {
@@ -34,6 +34,10 @@ public:
 
     void SetLoader(vtkPotreeLoader* loader);
     vtkPotreeLoader* GetLoader();
+
+    void SetNumThreads(unsigned int num_threads);
+
+    vtkGetMacro(NumThreads, unsigned int);
 
     vtkSetMacro(PointBudget, std::size_t);
     vtkGetMacro(PointBudget, std::size_t);
@@ -72,22 +76,24 @@ protected:
      * @param camera
      * @return
      */
-    float GetPriority(const vtkTileHierarchyNodePtr& node, vtkCamera* camera) const;
+    float GetPriority(const vtkTileHierarchyNodePtr& node, vtkRenderer* ren) const;
 
     bool BoundsInitialized;
     std::atomic_bool ForceUpdate;
     std::size_t PointBudget;
     float MinimumNodeSize;
 
+    unsigned int NumThreads;
     vtkSmartPointer<vtkPotreeLoader> Loader;
-    vtkSmartPointer<vtkRenderer> Renderer;
-    std::shared_ptr<vtkTileHierarchyLoaderThread> LoaderThread;
+    //vtkSmartPointer<vtkRenderer> Renderer;
+    std::unique_ptr<vtkTileHierarchyLoaderThread> LoaderThread;
 
-    vtkNew<CheckVisibilityCallback> CheckVisibilityObserver;
-    vtkNew<ReRenderCallback> ReRenderObserver;
+    //vtkNew<CheckVisibilityCallback> CheckVisibilityObserver;
+    //vtkNew<ReRenderCallback> ReRenderObserver;
 private:
-    friend class CheckVisibilityCallback;
-    friend class ReRenderCallback;
+    void InitLoaderThread();
+    //friend class CheckVisibilityCallback;
+    //friend class ReRenderCallback;
 
     vtkTileHierarchyMapper(const vtkTileHierarchyMapper&) = delete;
     void operator=(const vtkTileHierarchyMapper&) = delete;

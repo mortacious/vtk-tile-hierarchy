@@ -4,12 +4,13 @@ set(classes
   vtkTileHierarchyLoader
   vtkPotreeLoader
   vtkTileHierarchyMapper
-  vtkPotreeMetaData
-  vtkTileHierarchyLoaderThread
-  vtkGenericLoader)
+  vtkTileHierarchyLoaderThread)
+  #vtkGenericLoader)
 
 set(additional_srcs
-        fileDownload.cxx)
+        internal/vtkPotree1_7DatasetBase.cxx
+        internal/vtkPotree1_7DatasetFile.cxx
+        internal/vtkPotree1_7DatasetUrl.cxx)
 vtk_module_add_module(vtkTileHierarchy
   CLASSES ${classes} SOURCES ${additional_srcs})
 

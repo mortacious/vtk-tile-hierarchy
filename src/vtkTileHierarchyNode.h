@@ -5,10 +5,14 @@
 #pragma once
 #include <vtkBoundingBox.h>
 #include <vtkSmartPointer.h>
+#include <vtkWeakPointer.h>
 #include <vtkWrappingHints.h>
+#include <vtkSetGet.h>
+#include <vtkObject.h>
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <unordered_map>
 #include "vtkTileHierarchyModule.h" // For export macro
 
 
@@ -20,34 +24,43 @@ class vtkRenderer;
 class vtkActor;
 
 class vtkTileHierarchyNode;
-using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
+using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
 
-VTK_WRAPEXCLUDE class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyNode
-{
+class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyNode: public vtkObject {
 public:
-    vtkTileHierarchyNode(const std::string& name,
-                        const vtkBoundingBox& bounding_box,
-                    unsigned int num_children,
-                    std::weak_ptr<vtkTileHierarchyNode> parent);
-
-    vtkTileHierarchyNode(const std::string& name,
-            const vtkBoundingBox& bounding_box,
-                    unsigned int num_children);
-    virtual ~vtkTileHierarchyNode();
+    static vtkTileHierarchyNode* New();
+    vtkTypeMacro(vtkTileHierarchyNode, vtkObject);
+    void PrintSelf(ostream& os, vtkIndent indent) override;
 
     const vtkBoundingBox& GetBoundingBox() const {
         return BoundingBox;
+    }
+
+    void SetBoundingBox(const vtkBoundingBox& bbox) {
+        BoundingBox = bbox;
     }
 
     std::size_t GetSize() const {
         return Size;
     }
 
-    const std::weak_ptr<vtkTileHierarchyNode>& GetParent() const {
+    void SetSize(std::size_t size) {
+        Size = size;
+    }
+
+    const vtkWeakPointer<vtkTileHierarchyNode>& GetParent() const {
         return Parent;
     }
 
-    vtkTileHierarchyNodePtr GetChild(vtkIdType idx);
+    void SetParent(vtkTileHierarchyNode* parent) {
+        Parent = parent;
+    }
+
+    bool HasChild(vtkIdType idx);
+
+    vtkTileHierarchyNodePtr GetChild(vtkIdType idx) {
+        return Children[idx];
+    }
 
     void SetChild(vtkIdType idx, vtkTileHierarchyNodePtr child);
 
@@ -61,28 +74,30 @@ public:
 
     virtual void Render(vtkRenderer* ren, vtkActor* a);
 
-    const std::string& GetName() const {
-        return Name;
+    vtkMapper* GetMapper();
+
+    void SetMapper(vtkSmartPointer<vtkMapper> mapper);
+
+    std::mutex& GetMutex() {
+        return Mutex;
     }
 
-    virtual std::size_t GetLevel() const
-    {
-        return Name.length();
-    }
-
-    std::string Name;
-    mutable std::mutex Mutex;
-    vtkBoundingBox BoundingBox;
-    std::weak_ptr<vtkTileHierarchyNode> Parent;
-    std::vector<vtkTileHierarchyNodePtr> Children;
-    //bool Loaded;
-    // This is set dynamically
-    std::size_t Size;
-    vtkSmartPointer<vtkMapper> Mapper;
-
+    void ResetNode();
 protected:
     friend class vtkTileHierarchyLoader;
     friend class vtkTileHierarchyMapper;
+
+    vtkTileHierarchyNode();
+    ~vtkTileHierarchyNode() override = default;
+
+    mutable std::mutex Mutex;
+    vtkBoundingBox BoundingBox;
+    vtkWeakPointer<vtkTileHierarchyNode> Parent;
+    std::vector<vtkTileHierarchyNodePtr> Children;
+
+    // This is set dynamically
+    std::size_t Size;
+    vtkSmartPointer<vtkMapper> Mapper;
 private:
     vtkTileHierarchyNode(const vtkTileHierarchyNode&) = delete;
     void operator=(const vtkTileHierarchyNode&) = delete;

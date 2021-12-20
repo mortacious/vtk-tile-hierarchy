@@ -6,9 +6,14 @@
 #include "vtkTileHierarchyLoader.h"
 #include "vtkTileHierarchyNode.h"
 
-vtkTileHierarchyLoaderThread::vtkTileHierarchyLoaderThread(vtkTileHierarchyLoader *loader)
-    : Running(true), Func(nullptr), Mutex(), MaxInQueue(2), Thread([this] { Run(); }) {
-    Loader.TakeReference(loader);
+vtkTileHierarchyLoaderThread::vtkTileHierarchyLoaderThread(vtkSmartPointer<vtkTileHierarchyLoader> loader, unsigned int num_threads)
+    : Running(true), Func(nullptr), Mutex(), MaxInQueue(2), Threads() {
+    std::cout << "Spawning " << num_threads << " worker threads" << std::endl;
+    Threads.reserve(num_threads);
+    for(int i=0; i<num_threads; ++i) {
+        Threads.emplace_back(&vtkTileHierarchyLoaderThread::Run, this);
+    }
+    Loader = loader;
 }
 
 vtkTileHierarchyLoaderThread::~vtkTileHierarchyLoaderThread() {
@@ -16,7 +21,9 @@ vtkTileHierarchyLoaderThread::~vtkTileHierarchyLoaderThread() {
     Running = false;
     Cond.notify_all();
     lock.unlock();
-    if(Thread.joinable()) Thread.join();
+    for(auto& thread: Threads) {
+        if(thread.joinable()) thread.join();
+    }
 }
 
 void vtkTileHierarchyLoaderThread::UnscheduleAll() {
@@ -36,24 +43,27 @@ void vtkTileHierarchyLoaderThread::ScheduleForLoading(vtkTileHierarchyNodePtr& n
             Func();
     } else {
         std::lock_guard<std::mutex> lock{Mutex};
-        if(NeedToLoad.size() == MaxInQueue) {
+
+        NeedToLoad.push(std::make_pair(node, priority));
+        while(NeedToLoad.size() > MaxInQueue) {
             NeedToLoad.popMin(); // Remove the smallest Element
         }
-        NeedToLoad.push(std::make_pair(node, priority));
         Cond.notify_one();
     }
 }
 
 void vtkTileHierarchyLoaderThread::Run() {
-    std::unique_lock<std::mutex> lock{Mutex};
-    while(Running) {
-        while(NeedToLoad.empty()) {
-            Cond.wait(lock);
-            if(!Running)
-                return;
+
+    while(true) {
+        std::unique_lock<std::mutex> lock{Mutex};
+        if(NeedToLoad.empty()) {
+            Cond.wait(lock, [&](){return !NeedToLoad.empty() || !Running;});
         }
+        if(!Running)
+            return;
 
         auto node = NeedToLoad.popMax().first;
+
         if(node->IsLoaded()) {
             continue; // skip already loaded nodes
         }
@@ -63,6 +73,5 @@ void vtkTileHierarchyLoaderThread::Run() {
 
         if(Func)
             Func();
-        lock.lock();
     }
 }

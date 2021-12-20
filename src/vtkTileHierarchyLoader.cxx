@@ -10,6 +10,9 @@
 #include <vtkMapper.h>
 #include <vtkDataSetMapper.h>
 
+std::size_t std::hash<vtkTileHierarchyNodePtr>::operator()(const vtkTileHierarchyNodePtr &s) const noexcept {
+    return std::hash<vtkTileHierarchyNode *>{}(s.GetPointer());
+}
 
 size_t vtkTileHierarchyLoader::TileTreeNodeSize::operator()(const vtkTileHierarchyNodePtr &k, const std::pair<vtkSmartPointer<vtkMapper>, size_t> &v) const {
     if(!k) return 0;
@@ -45,6 +48,10 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoader::GetRootNode() {
     return RootNode;
 }
 
+void vtkTileHierarchyLoader::SetRootNode(vtkTileHierarchyNodePtr root_node) {
+    RootNode = std::move(root_node);
+}
+
 vtkSmartPointer<vtkMapper> vtkTileHierarchyLoader::MakeMapper() const {
     //auto mapper = vtkSmartPointer<vtkMapper>::NewInstance(MapperTemplate);
     auto mapper = vtkSmartPointer<vtkDataSetMapper>::New();
@@ -54,24 +61,35 @@ vtkSmartPointer<vtkMapper> vtkTileHierarchyLoader::MakeMapper() const {
 }
 
 bool vtkTileHierarchyLoader::TryGetNodeFromCache(vtkTileHierarchyNodePtr &node) {
-    std::unique_lock<std::mutex> node_lock{node->Mutex};
+    std::scoped_lock<std::mutex> cache_lock{CacheMutex};
     if(Cache.exist(node)) {
-        std::scoped_lock<std::mutex> cache_lock{CacheMutex};
         auto val = Cache.pop(node);
+        std::scoped_lock<std::mutex> node_lock{node->GetMutex()};
         node->Mapper = vtkSmartPointer(std::move(val.first));
         node->Size = val.second;
         //Cache.erase(node); // Remove the node from cache as long as it is used by the mapper
-        node_lock.unlock();
+        //node_lock.unlock();
         return true;
     }
-    if(node_lock) node_lock.unlock();
+    //if(node_lock) node_lock.unlock();
     return false;
 }
 
 void vtkTileHierarchyLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
-    if(!TryGetNodeFromCache(node) && !node->IsLoaded()) { // avoid loading nodes that are already in use or cached
+    std::unique_lock<std::mutex> cache_lock{CacheMutex};
+    if(Cache.exist(node)) {
+        auto val = Cache.pop(node);
+        std::scoped_lock<std::mutex> node_lock{node->GetMutex()};
+        node->Mapper = vtkSmartPointer(std::move(val.first));
+        node->Size = val.second;
+    }
+    cache_lock.unlock();
+    std::unique_lock<std::mutex> node_lock{node->GetMutex()};
+    if(!node->IsLoaded()) {
         FetchNode(node);
     }
+    //if(!TryGetNodeFromCache(node) && !node->IsLoaded()) { // avoid loading nodes that are already in use or cached
+    //}
     // recursively load all nodes below as well
     if (recursive)
     {
@@ -84,7 +102,7 @@ void vtkTileHierarchyLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recurs
 }
 
 void vtkTileHierarchyLoader::UnloadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
-    std::unique_lock<std::mutex> node_lock{node->Mutex};
+    std::unique_lock<std::mutex> node_lock{node->GetMutex()};
     if(node->IsLoaded() && !Cache.exist(node)) {
         std::scoped_lock<std::mutex> cache_lock{CacheMutex};
         // cache this node if it is loaded and not in the cache

@@ -16,11 +16,12 @@
 
 class vtkTileHierarchyLoader;
 class vtkTileHierarchyNode;
-using vtkTileHierarchyNodePtr = std::shared_ptr<vtkTileHierarchyNode>;
+using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
+
 
 VTK_WRAPEXCLUDE class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoaderThread {
 public:
-    explicit vtkTileHierarchyLoaderThread(vtkTileHierarchyLoader* loader);
+    explicit vtkTileHierarchyLoaderThread(vtkSmartPointer<vtkTileHierarchyLoader> loader, unsigned int num_threads=2);
     ~vtkTileHierarchyLoaderThread();
     void UnscheduleAll();
     void ScheduleForLoading(vtkTileHierarchyNodePtr& node, float priority);
@@ -29,10 +30,10 @@ private:
     void Run();
 
     vtkSmartPointer<vtkTileHierarchyLoader> Loader;
-    bool Running;
+    std::atomic_bool Running;
 
     std::function<void()> Func;
-    std::mutex Mutex;
+    mutable std::mutex Mutex;
     std::condition_variable Cond;
 
     using HeapElement = std::pair<vtkTileHierarchyNodePtr, float>;
@@ -45,10 +46,9 @@ private:
         }
     };
     minmax::MinMaxHeap<HeapElement, std::vector<HeapElement>, Compare> NeedToLoad;
-    //PriorityQueue<vtkTileHierarchyNodePtr, float> NeedToLoad;
-    //std::deque<vtkTileHierarchyNodePtr> NeedToLoad;
+
     unsigned int MaxInQueue;
-    std::thread Thread;
+    std::vector<std::thread> Threads;
 
 };
 

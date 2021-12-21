@@ -39,7 +39,7 @@ void vtkPotreeLoader::Initialize() {
 }
 
 
-void vtkPotreeLoader::FetchNode(vtkTileHierarchyNodePtr &node) {
+void vtkPotreeLoader::FetchNode(vtkTileHierarchyNodePtr node) {
     //std::lock_guard<std::mutex> node_lock(node->GetMutex());
     auto casted_node = vtkPointHierarchyNode::SafeDownCast(node);
 

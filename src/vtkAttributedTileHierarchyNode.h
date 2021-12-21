@@ -4,23 +4,29 @@
 
 #pragma once
 #include "vtkTileHierarchyNode.h"
+#include <unordered_map>
+#include <vtkVariant.h>
 
-class vtkAttributedTileHierarchyNode: vtkTileHierarchyNode {
+class vtkVariant;
+
+class vtkAttributedTileHierarchyNode;
+using vtkAttributedTileHierarchyNodePtr = vtkSmartPointer<vtkAttributedTileHierarchyNode>;
+
+class vtkAttributedTileHierarchyNode: public vtkTileHierarchyNode {
 public:
-    vtkAttributedTileHierarchyNode(const std::string& name,
-                         const vtkBoundingBox& bounding_box,
-                         unsigned int num_children,
-                         std::weak_ptr<vtkTileHierarchyNode> parent);
-
-    vtkAttributedTileHierarchyNode(const std::string& name,
-                         const vtkBoundingBox& bounding_box,
-                         unsigned int num_children);
-    virtual ~vtkAttributedTileHierarchyNode();
+    static vtkAttributedTileHierarchyNode* New();
+    vtkTypeMacro(vtkAttributedTileHierarchyNode, vtkTileHierarchyNode);
+    void PrintSelf(ostream& os, vtkIndent indent) override;
 
     const vtkVariant& GetAttribute(const std::string& name);
     void SetAttribute(const std::string& name, const vtkVariant& attribute);
 protected:
-    std::unordered_map<std::string, vtkVariant> Attributes;
+    vtkAttributedTileHierarchyNode();
+    ~vtkAttributedTileHierarchyNode() override = default;
 
+    std::unordered_map<std::string, vtkVariant> Attributes;
+private:
+    vtkAttributedTileHierarchyNode(const vtkAttributedTileHierarchyNode&) = delete;
+    void operator=(const vtkAttributedTileHierarchyNode&) = delete;
 };
 

@@ -58,11 +58,11 @@ public:
 
     bool HasChild(vtkIdType idx);
 
-    vtkTileHierarchyNodePtr GetChild(vtkIdType idx) {
+    vtkTileHierarchyNode* GetChild(vtkIdType idx) {
         return Children[idx];
     }
 
-    void SetChild(vtkIdType idx, vtkTileHierarchyNodePtr child);
+    void SetChild(vtkIdType idx, vtkTileHierarchyNode* child);
 
     unsigned int GetNumChildren() const {
         return Children.size();

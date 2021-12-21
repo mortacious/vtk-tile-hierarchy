@@ -155,7 +155,7 @@ vtkTileHierarchyMapper::vtkTileHierarchyMapper()
     SetStatic(true); // This mapper does not use the pipeline
 }
 
-void vtkTileHierarchyMapper::SetLoader(vtkPotreeLoader* loader) {
+void vtkTileHierarchyMapper::SetLoader(vtkTileHierarchyLoader* loader) {
     Register(loader);
     Loader.TakeReference(loader);
     InitLoaderThread();
@@ -168,7 +168,7 @@ void vtkTileHierarchyMapper::InitLoaderThread() {
     BoundsInitialized = false;
 }
 
-vtkPotreeLoader* vtkTileHierarchyMapper::GetLoader() {
+vtkTileHierarchyLoader* vtkTileHierarchyMapper::GetLoader() {
     return Loader;
 }
 

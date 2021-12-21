@@ -4,8 +4,12 @@ set(classes
   vtkTileHierarchyLoader
   vtkPotreeLoader
   vtkTileHierarchyMapper
-  vtkTileHierarchyLoaderThread)
-  #vtkGenericLoader)
+  vtkTileHierarchyLoaderThread
+  vtkAttributedTileHierarchyNode)
+
+if(BUILD_PYTHON)
+    list(APPEND classes vtkPythonLoader)
+endif()
 
 set(additional_srcs
         internal/vtkPotree1_7DatasetBase.cxx

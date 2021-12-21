@@ -28,7 +28,7 @@ public:
 
     void Initialize() override;
 
-    VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr& node) override;
+    VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr node) override;
 
 
     vtkSmartPointer<vtkMapper> MakeMapper() const override;

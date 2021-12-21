@@ -16,7 +16,7 @@ class vtkRenderer;
 class vtkActor;
 class vtkWindow;
 class vtkCamera;
-class vtkPotreeLoader;
+class vtkTileHierarchyLoader;
 class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
 class vtkTileHierarchyLoaderThread;
@@ -32,8 +32,8 @@ public:
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
 
-    void SetLoader(vtkPotreeLoader* loader);
-    vtkPotreeLoader* GetLoader();
+    void SetLoader(vtkTileHierarchyLoader* loader);
+    vtkTileHierarchyLoader* GetLoader();
 
     void SetNumThreads(unsigned int num_threads);
 
@@ -84,7 +84,7 @@ protected:
     float MinimumNodeSize;
 
     unsigned int NumThreads;
-    vtkSmartPointer<vtkPotreeLoader> Loader;
+    vtkSmartPointer<vtkTileHierarchyLoader> Loader;
     //vtkSmartPointer<vtkRenderer> Renderer;
     std::unique_ptr<vtkTileHierarchyLoaderThread> LoaderThread;
 

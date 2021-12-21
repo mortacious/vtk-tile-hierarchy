@@ -45,7 +45,7 @@ public:
 
     VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive);
 
-    VTK_WRAPEXCLUDE virtual void FetchNode(vtkTileHierarchyNodePtr& node) = 0;
+    VTK_WRAPEXCLUDE virtual void FetchNode(vtkTileHierarchyNodePtr node) = 0;
 
     VTK_WRAPEXCLUDE bool TryGetNodeFromCache(vtkTileHierarchyNodePtr& node);
 
@@ -66,6 +66,7 @@ public:
     }
 
     vtkTileHierarchyNodePtr GetRootNode();
+    void SetRootNode(vtkTileHierarchyNode* root_node);
 protected:
     friend class vtkTileHierarchyLoaderThread;
     vtkTileHierarchyLoader();
@@ -82,7 +83,6 @@ protected:
 
     std::mutex CacheMutex;
 
-    void SetRootNode(vtkTileHierarchyNodePtr root_node);
 private:
     vtkTileHierarchyLoader(const vtkTileHierarchyLoader&) = delete;
     void operator=(const vtkTileHierarchyLoader&) = delete;

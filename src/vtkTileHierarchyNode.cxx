@@ -41,11 +41,12 @@ bool vtkTileHierarchyNode::HasChild(vtkIdType idx) {
     return Children[idx] != nullptr;
 }
 
-void vtkTileHierarchyNode::SetChild(vtkIdType idx, vtkTileHierarchyNodePtr child) {
+void vtkTileHierarchyNode::SetChild(vtkIdType idx, vtkTileHierarchyNode* child) {
     if(Children.size() <= idx) {
         SetNumChildren(idx+1);
     }
-    Children[idx] = child;
+    Register(child);
+    Children[idx].TakeReference(child);
 }
 
 void vtkTileHierarchyNode::ResetNode() {

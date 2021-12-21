@@ -31,9 +31,8 @@ bool vtkPotree1_7DatasetBase::IsValidPotree(const std::string& path, std::string
     fs::path p = {path.c_str()};
     error_msg.clear();
     auto fname = p.filename().string();
-    std::cout << fname << std::endl;
     if(fname != "cloud.js") {
-        error_msg = "not a Potree 1.7 dataset";
+        error_msg = "Not a Potree 1.7 dataset";
         return false;
     }
     return true;
@@ -124,12 +123,8 @@ void vtkPotree1_7DatasetBase::LoadNodeHierarchy(vtkPointHierarchyNodePtr &root_n
     std::queue<vtkPointHierarchyNodePtr> pending_nodes;
     pending_nodes.push(root_node);
 
-    //char cfg[5];
     fs::path hrc_file = CreateFileName(root_node->GetName(), ".hrc");
     auto data = FetchFile(hrc_file.string());
-    //if(!f->good())
-    //    throw std::runtime_error(std::string{"Failed to read file: "} + hrc_file.string());
-    //f->read(cfg, 5);
     std::cout << 0.0 << std::flush;
     for(size_t pos = 0; pos < data.size(); pos+=5) {
         auto node = pending_nodes.front();
@@ -150,7 +145,6 @@ void vtkPotree1_7DatasetBase::LoadNodeHierarchy(vtkPointHierarchyNodePtr &root_n
                 pending_nodes.push(vtkPointHierarchyNode::SafeDownCast(node->GetChild(j)));
             }
         }
-        //f->read(cfg, 5); // read next node
     }
 
     std::unordered_set<vtkPointHierarchyNode*> seen;    // save the shared_ptr copy overhead and just

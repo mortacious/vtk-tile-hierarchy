@@ -35,7 +35,7 @@ void vtkPotreeLoader::Initialize() {
     Dataset->LoadMetaData(Path);
     auto root_node = vtkPointHierarchyNodePtr(nullptr);
     Dataset->LoadNodeHierarchy(root_node);
-    RootNode = root_node;
+    SetRootNode(root_node);
 }
 
 

@@ -76,7 +76,7 @@ public:
 
     vtkMapper* GetMapper();
 
-    void SetMapper(vtkSmartPointer<vtkMapper> mapper);
+    void SetMapper(vtkMapper* mapper);
 
     std::mutex& GetMutex() {
         return Mutex;

@@ -50,8 +50,7 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoader::GetRootNode() {
 
 void vtkTileHierarchyLoader::SetRootNode(vtkTileHierarchyNode* root_node) {
     Register(root_node);
-    RootNode.TakeReference(root_node);
-    std::cout << "root refcount " << RootNode->GetReferenceCount() << std::endl;
+    RootNode = vtkTileHierarchyNodePtr(root_node);
 }
 
 vtkSmartPointer<vtkMapper> vtkTileHierarchyLoader::MakeMapper() const {

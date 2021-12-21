@@ -45,8 +45,7 @@ void vtkTileHierarchyNode::SetChild(vtkIdType idx, vtkTileHierarchyNode* child) 
     if(Children.size() <= idx) {
         SetNumChildren(idx+1);
     }
-    Register(child);
-    Children[idx].TakeReference(child);
+    Children[idx] = vtkSmartPointer<vtkTileHierarchyNode>(child);
 }
 
 void vtkTileHierarchyNode::ResetNode() {
@@ -54,8 +53,8 @@ void vtkTileHierarchyNode::ResetNode() {
     Size = 0;
 }
 
-void vtkTileHierarchyNode::SetMapper(vtkSmartPointer<vtkMapper> mapper) {
-    Mapper = vtkSmartPointer<vtkMapper>(std::move(mapper));
+void vtkTileHierarchyNode::SetMapper(vtkMapper* mapper) {
+    Mapper = vtkSmartPointer<vtkMapper>(mapper);
 }
 
 vtkMapper * vtkTileHierarchyNode::GetMapper() {

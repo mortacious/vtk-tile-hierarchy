@@ -23,7 +23,7 @@ class VTKTILEHIERARCHY_EXPORT vtkPotreeLoader: public vtkTileHierarchyLoader
 {
 public:
     static vtkPotreeLoader* New();
-    vtkTypeMacro(vtkPotreeLoader, vtkObject);
+    vtkTypeMacro(vtkPotreeLoader, vtkTileHierarchyLoader);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
     void Initialize() override;

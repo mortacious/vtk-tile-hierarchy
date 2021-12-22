@@ -43,10 +43,13 @@ option(BUILD_SHARED_LIBS "Build shared or static libraries" "${_shared_default}"
 if(BUILD_PYTHON)
     message(STATUS "Building python module")
     set(OUTPUT_DIR "vtk_tile_hierarchy/lib")
+    set(INSTALL_HEADERS OFF)
     #message(STATUS "Python include ${Python3_INCLUDE_DIR}")
     include_directories("${Python3_INCLUDE_DIR}")
 else()
     set(OUTPUT_DIR ${LIBRARY_OUTPUT_DIRECTORY})
+    set(INSTALL_HEADERS ON)
+
 endif()
 
 # First we scan the modules in our project to find out the dependency graph
@@ -65,7 +68,7 @@ vtk_module_scan(
 # Build the module we just scanned.
 vtk_module_build(MODULES ${modules}
         LIBRARY_DESTINATION "${OUTPUT_DIR}"
-        INSTALL_HEADERS OFF
+        INSTALL_HEADERS ${INSTALL_HEADERS}
         )
 
 if(BUILD_PYTHON)

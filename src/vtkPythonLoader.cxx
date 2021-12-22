@@ -4,7 +4,6 @@
 
 #include "vtkPythonLoader.h"
 #include "vtkTileHierarchyNode.h"
-#include "vtkAttributedTileHierarchyNode.h"
 #include "gil.h"
 #include <vtkMapper.h>
 #include <vtkObjectFactory.h>

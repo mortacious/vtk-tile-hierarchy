@@ -4,8 +4,7 @@ set(classes
   vtkTileHierarchyLoader
   vtkPotreeLoader
   vtkTileHierarchyMapper
-  vtkTileHierarchyLoaderThread
-  vtkAttributedTileHierarchyNode)
+  vtkTileHierarchyLoaderThread)
 
 if(BUILD_PYTHON)
     list(APPEND classes vtkPythonLoader)

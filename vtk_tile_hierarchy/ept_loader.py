@@ -161,8 +161,7 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
             with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
                 hierarchy_data = json.load(f)
             num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node)
-            print(num_nodes, num_points, self.npoints)
-
+            print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
         return self.root_node
 
     def OnFetchNode(self, node: vtkTileHierarchyNodePython):

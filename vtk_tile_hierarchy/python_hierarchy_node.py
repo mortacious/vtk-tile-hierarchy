@@ -1,9 +1,9 @@
-from .vtkTileHierarchy import vtkAttributedTileHierarchyNode
+from .vtkTileHierarchy import vtkTileHierarchyNode
 import numpy as np
 import vtk
 
 
-class vtkTileHierarchyNodePython(vtkAttributedTileHierarchyNode):
+class vtkTileHierarchyNodePython(vtkTileHierarchyNode):
     def __init__(self, parent=None, bounds=None, num_children=None, **kwargs):
         super().__init__()
         if parent is not None:
@@ -13,8 +13,7 @@ class vtkTileHierarchyNodePython(vtkAttributedTileHierarchyNode):
         self.bounds = bounds
         if num_children is not None:
             self.num_children = num_children
-        for k, v in kwargs.items():
-            self[k] = v
+        self.attributes = kwargs
 
     @property
     def parent(self):
@@ -31,7 +30,7 @@ class vtkTileHierarchyNodePython(vtkAttributedTileHierarchyNode):
     @bounds.setter
     def bounds(self, b):
         if not isinstance(b, vtk.vtkBoundingBox):
-            b = vtk.vtkBoundingBox(np.asarray(b))
+            b = vtk.vtkBoundingBox(np.asarray(b).ravel())
         self.SetBoundingBox(b)
 
     @property
@@ -63,10 +62,12 @@ class vtkTileHierarchyNodePython(vtkAttributedTileHierarchyNode):
         return self.IsLoaded()
 
     def __setitem__(self, key, value):
-        self.SetAttribute(key, value)
+        self.attributes[key] = value
+        #self.SetAttribute(key, value)
 
     def __getitem__(self, item):
-        return self.GetAttribute(item)
+        return self.attributes[item]
+        #return self.GetAttribute(item)
 
     def reset(self):
         self.ResetNode()

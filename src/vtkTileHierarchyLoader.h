@@ -10,6 +10,7 @@
 #include <vtkSmartPointer.h>
 #include <vtkObject.h>
 #include <memory>
+#include <any>
 #include "vtkTileHierarchyModule.h" // For export macro
 
 
@@ -25,6 +26,11 @@ struct std::hash<vtkTileHierarchyNodePtr> {
 class vtkMapper;
 
 class vtkTileHierarchyLoaderThread;
+
+struct vtkTileHierarchyLoaderRenderState {
+    vtkTileHierarchyLoaderRenderState() = default;
+    virtual ~vtkTileHierarchyLoaderRenderState() = default;
+};
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoader: public vtkObject {
 public:
@@ -42,6 +48,13 @@ public:
     VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node) {
         UnloadNode(node, false);
     }
+
+    VTK_WRAPEXCLUDE virtual std::unique_ptr<vtkTileHierarchyLoaderRenderState> PreRender() {
+        return std::make_unique<vtkTileHierarchyLoaderRenderState>();
+    };
+
+    VTK_WRAPEXCLUDE virtual void PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) {
+    };
 
     VTK_WRAPEXCLUDE void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive);
 

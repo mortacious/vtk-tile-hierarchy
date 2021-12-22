@@ -20,7 +20,7 @@ void vtkTileHierarchyNode::PrintSelf(ostream &os, vtkIndent indent) {
 }
 
 void vtkTileHierarchyNode::Render(vtkRenderer *ren, vtkActor *a) {
-    std::lock_guard<std::mutex> lock{Mutex};
+    //std::lock_guard<std::mutex> lock{Mutex};
     if(!Mapper) return;
 
     Mapper->Render(ren, a);
@@ -50,7 +50,7 @@ void vtkTileHierarchyNode::SetChild(vtkIdType idx, vtkTileHierarchyNode* child) 
 
 void vtkTileHierarchyNode::ResetNode() {
     Mapper = nullptr;
-    Size = 0;
+    //Size = 0;
 }
 
 void vtkTileHierarchyNode::SetMapper(vtkMapper* mapper) {

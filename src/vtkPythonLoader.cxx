@@ -5,6 +5,7 @@
 #include "vtkPythonLoader.h"
 #include "vtkTileHierarchyNode.h"
 #include "vtkAttributedTileHierarchyNode.h"
+#include "gil.h"
 #include <vtkMapper.h>
 #include <vtkObjectFactory.h>
 #include <vtkCommand.h>
@@ -29,17 +30,10 @@ void vtkPythonLoader::FetchNode(vtkTileHierarchyNodePtr node) {
     Superclass::InvokeEvent(FetchNodeEvent, node);
 }
 
-//void vtkPythonLoader::DummyFetch() {
-//    vtkBoundingBox bounds(0, 1, 0, 1, 0,1);
-//    auto dummy_node = vtkAttributedTileHierarchyNodePtr::New();
-//    dummy_node->SetBoundingBox(bounds);
-//    dummy_node->SetSize(10);
-//    dummy_node->SetAttribute("name", "my_node_name");
-//    gil_scoped_release release; // release the Python GIL here so the thread can run!
-//    std::thread foo(&vtkPythonLoader::FetchNode, this, dummy_node);
-//    foo.join();
-//}
-
 void vtkPythonLoader::PrintSelf(ostream &os, vtkIndent indent) {
     Superclass::PrintSelf(os, indent);
+}
+
+std::unique_ptr<vtkTileHierarchyLoaderRenderState> vtkPythonLoader::PreRender() {
+    return std::make_unique<vtkTileHierarchyLoaderRenderStatePython>();
 }

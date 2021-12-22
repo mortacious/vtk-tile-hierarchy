@@ -29,5 +29,6 @@ class vtkPythonHierarchyLoader(vtkPythonLoader, ABC):
         """
 
     @calldata_type(vtk.VTK_OBJECT)
-    def _on_fetch_node(self, _, __, calldata):
-        self.OnFetchNode(calldata)
+    def _on_fetch_node(self, _, __, node):
+        mapper = self.OnFetchNode(node)
+        node.SetMapper(mapper)

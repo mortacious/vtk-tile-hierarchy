@@ -10,6 +10,7 @@
 #include <memory>
 #include "vtkTileHierarchyLoader.h"
 #include "vtkTileHierarchyModule.h" // For export macro
+#include "gil.h"
 
 class vtkCommand;
 class vtkMapper;
@@ -17,6 +18,17 @@ class vtkBoundingBox;
 
 class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
+
+
+class vtkTileHierarchyLoaderRenderStatePython: public vtkTileHierarchyLoaderRenderState {
+public:
+    vtkTileHierarchyLoaderRenderStatePython()
+            : release() { };
+    ~vtkTileHierarchyLoaderRenderStatePython() override {
+    };
+private:
+    gil_scoped_release release;
+};
 
 class VTKTILEHIERARCHY_EXPORT vtkPythonLoader: public vtkTileHierarchyLoader {
 public:
@@ -27,7 +39,8 @@ public:
     void Initialize() override;
     void FetchNode(vtkTileHierarchyNodePtr node) override;
 
-    //void DummyFetch();
+
+    VTK_WRAPEXCLUDE std::unique_ptr<vtkTileHierarchyLoaderRenderState> PreRender() override;
 
     vtkGetMacro(InitializeEvent, unsigned long);
     vtkGetMacro(FetchNodeEvent, unsigned long);

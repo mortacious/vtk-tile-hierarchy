@@ -10,6 +10,7 @@
 #include <vtkMapper.h>
 #include <vtkDataSetMapper.h>
 
+
 std::size_t std::hash<vtkTileHierarchyNodePtr>::operator()(const vtkTileHierarchyNodePtr &s) const noexcept {
     return std::hash<vtkTileHierarchyNode *>{}(s.GetPointer());
 }
@@ -21,27 +22,12 @@ size_t vtkTileHierarchyLoader::TileTreeNodeSize::operator()(const vtkTileHierarc
 
 vtkTileHierarchyLoader::vtkTileHierarchyLoader()
     : RootNode(nullptr), Cache(15000000) {
-    //MapperTemplate->SetColorModeToMapScalars();
-    //MapperTemplate->SetScalarModeToUsePointData();
-    //MapperTemplate->SetStatic(true);
 
 }
-
-//void vtkTileHierarchyLoader::SetMapperTemplate(vtkMapper *mapper) {
-//    MapperTemplate.TakeReference(mapper);
-//}
-//
-//vtkMapper * vtkTileHierarchyLoader::GetMapperTemplate() {
-//    return MapperTemplate.Get();
-//}
 
 void vtkTileHierarchyLoader::PrintSelf(ostream &os, vtkIndent indent) {
     Superclass::PrintSelf(os, indent);
 }
-
-//bool vtkTileHierarchyLoader::IsCached(const vtkTileHierarchyNodePtr &node) const {
-//    return Cache.exist(node);
-//}
 
 vtkTileHierarchyNodePtr vtkTileHierarchyLoader::GetRootNode() {
     if(!RootNode) Initialize();
@@ -54,7 +40,6 @@ void vtkTileHierarchyLoader::SetRootNode(vtkTileHierarchyNode* root_node) {
 }
 
 vtkSmartPointer<vtkMapper> vtkTileHierarchyLoader::MakeMapper() const {
-    //auto mapper = vtkSmartPointer<vtkMapper>::NewInstance(MapperTemplate);
     auto mapper = vtkSmartPointer<vtkDataSetMapper>::New();
     assert(mapper->GetReferenceCount() == 1);
     mapper->SetStatic(true);
@@ -68,11 +53,8 @@ bool vtkTileHierarchyLoader::TryGetNodeFromCache(vtkTileHierarchyNodePtr &node) 
         std::scoped_lock<std::mutex> node_lock{node->GetMutex()};
         node->Mapper = vtkSmartPointer(std::move(val.first));
         node->Size = val.second;
-        //Cache.erase(node); // Remove the node from cache as long as it is used by the mapper
-        //node_lock.unlock();
         return true;
     }
-    //if(node_lock) node_lock.unlock();
     return false;
 }
 
@@ -89,8 +71,6 @@ void vtkTileHierarchyLoader::LoadNode(vtkTileHierarchyNodePtr &node, bool recurs
     if(!node->IsLoaded()) {
         FetchNode(node);
     }
-    //if(!TryGetNodeFromCache(node) && !node->IsLoaded()) { // avoid loading nodes that are already in use or cached
-    //}
     // recursively load all nodes below as well
     if (recursive)
     {

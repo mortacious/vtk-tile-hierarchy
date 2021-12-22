@@ -16,14 +16,6 @@
 #include <vtkExecutive.h>
 #include <vtkRenderWindowInteractor.h>
 
-
-//bool is_different(const vtkMatrix4x4* first, const vtkMatrix4x4* second) {
-//    for (int i = 0; i < 4; ++i)
-//        for (int j = 0; j < 4; ++j)
-//            if (first->GetElement(i, j) != second->GetElement(i, j)) return true;
-//    return false;
-//}
-
 enum FrustumCull
 {
     INSIDE_FRUSTUM,
@@ -71,82 +63,6 @@ int intersect(vtkCamera* camera, const vtkBoundingBox& bbox, double aspect_ratio
 
     return result;
 }
-
-//class CheckVisibilityCallback: public vtkCallbackCommand {
-//public:
-//    static CheckVisibilityCallback* New();
-//    vtkTypeMacro(CheckVisibilityCallback, vtkCallbackCommand);
-//
-//    // Here we Create a vtkCallbackCommand and reimplement it.
-//    void Execute(vtkObject* caller, unsigned long evId, void*) override
-//    {
-//        std::cout << "Camera moved" << std::endl;
-//        // Note the use of reinterpret_cast to cast the caller to the expected type.
-//        auto camera = Mapper->Renderer->GetActiveCamera();//reinterpret_cast<vtkCamera*>(caller);
-//        vtkVector3d camera_position;
-//        camera->GetPosition(camera_position.GetData());
-//        vtkQuaterniond camera_orientation(camera->GetOrientationWXYZ());
-//        vtkSmartPointer<vtkMatrix4x4> projection_matrix;
-//        projection_matrix.TakeReference(camera->GetProjectionTransformMatrix(Mapper->Renderer));
-//
-//        vtkVector3d camera_position_difference;
-//        vtkMath::Subtract(camera_position.GetData(), LastPosition.GetData(), camera_position_difference.GetData());
-//        bool projection_different = true;
-//        if(LastProjection) {
-//            projection_different = is_different(projection_matrix, LastProjection);
-//        }
-//        if (!projection_different
-//            && camera_position_difference.Norm() < 0.01f
-//            && (camera_orientation - LastOrientation).Norm() < 0.01f)
-//            return;
-//        LastPosition = camera_position;
-//        LastOrientation = camera_orientation;
-//        LastProjection = projection_matrix;
-//        if(Mapper->Renderer)
-//            //std::cout << "Re-Rendering due to moved camera" << std::endl;
-//            Mapper->Renderer->GetRenderWindow()->Render(); // force a render
-//    }
-//    CheckVisibilityCallback(): Mapper(nullptr)
-//    {
-//    }
-//
-//    // Set pointers to any clientData or callData here.
-//    vtkTileHierarchyMapper* Mapper;
-//    vtkVector3d LastPosition;
-//    vtkQuaterniond LastOrientation;
-//    vtkSmartPointer<vtkMatrix4x4> LastProjection;
-//};
-//
-//class ReRenderCallback: public vtkCallbackCommand {
-//public:
-//    static ReRenderCallback* New();
-//    vtkTypeMacro(ReRenderCallback, vtkCallbackCommand);
-//
-//    // Here we Create a vtkCallbackCommand and reimplement it.
-//    void Execute(vtkObject* caller, unsigned long evId, void*) override
-//    {
-//        // Note the use of reinterpret_cast to cast the caller to the expected type.
-//        if (vtkCommand::TimerEvent == evId) {
-//            if(Mapper->ForceUpdate && Mapper->Renderer) {
-//                std::cout << "Re-rendering " << count++ << std::endl;
-//                Mapper->Renderer->GetRenderWindow()->Render(); // force a render
-//            }
-//        }
-//    }
-//    ReRenderCallback(): Mapper(nullptr)
-//    {
-//    }
-//
-//    // Set pointers to any clientData or callData here.
-//    vtkTileHierarchyMapper* Mapper;
-//    size_t count = 0;
-//};
-//
-//
-//vtkStandardNewMacro(CheckVisibilityCallback);
-//vtkStandardNewMacro(ReRenderCallback);
-
-
 
 vtkStandardNewMacro(vtkTileHierarchyMapper);
 
@@ -205,7 +121,7 @@ void vtkTileHierarchyMapper::OnNodeLoaded() {
 }
 
 void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
-    //std::cout << "Rendering" << std::endl;
+    auto loader_state = Loader->PreRender();
     ForceUpdate = false;
 
     if(ren->GetRenderWindow()->GetActualSize()[1] < 10) {
@@ -250,6 +166,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
 
         }
     }
+    Loader->PostRender(std::move(loader_state));
 }
 
 

@@ -49,7 +49,6 @@ if(BUILD_PYTHON)
 else()
     set(OUTPUT_DIR ${LIBRARY_OUTPUT_DIRECTORY})
     set(INSTALL_HEADERS ON)
-
 endif()
 
 # First we scan the modules in our project to find out the dependency graph
@@ -69,6 +68,7 @@ vtk_module_scan(
 vtk_module_build(MODULES ${modules}
         LIBRARY_DESTINATION "${OUTPUT_DIR}"
         INSTALL_HEADERS ${INSTALL_HEADERS}
+        INSTALL_EXPORT ${CMAKE_PROJECT_NAME}
         )
 
 if(BUILD_PYTHON)
@@ -81,4 +81,32 @@ if(BUILD_PYTHON)
             # Static Python modules are almost never wanted.
             BUILD_STATIC    OFF
             INSTALL_HEADERS OFF)
+else()
+    install(EXPORT ${CMAKE_PROJECT_NAME}
+            FILE "vtktilehierarchy-targets.cmake"
+            NAMESPACE ${CMAKE_PROJECT_NAME}::
+            DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}
+            )
+
+    include(CMakePackageConfigHelpers)
+    set(INCLUDE_INSTALL_DIR "include/")
+    configure_package_config_file("vtktilehierarchy-config.cmake.in"
+            "${CMAKE_BINARY_DIR}/vtktilehierarchy-config.cmake"
+            INSTALL_DESTINATION lib/cmake
+            PATH_VARS INCLUDE_INSTALL_DIR
+            )
+
+    write_basic_package_version_file(
+            "${CMAKE_BINARY_DIR}/vtktilehierarchy-config-version.cmake"
+            VERSION 0.1.0
+            COMPATIBILITY AnyNewerVersion
+    )
+
+    install(
+            FILES
+            "${CMAKE_BINARY_DIR}/vtktilehierarchy-config.cmake"
+            "${CMAKE_BINARY_DIR}/vtktilehierarchy-config-version.cmake"
+            DESTINATION lib/cmake/${CMAKE_PROJECT_NAME}
+    )
+
 endif()

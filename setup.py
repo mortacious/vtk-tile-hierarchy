@@ -115,5 +115,8 @@ setup(
                                 cmake_args=["-DBUILD_PYTHON=ON"], debug=False)],
     cmdclass={"build_ext": CMakeBuild},
     install_requires=['numpy',
-                      'vtk>=9.0']
+                      'vtk>=9.0'],
+    extras_require={
+        'examples': ['pyvista']
+    }
 )

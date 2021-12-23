@@ -1,17 +1,16 @@
 import vtk
 import vtk_tile_hierarchy as vtke
-import pyvista as pv
+from pyvista.plotting import Plotter
 
-path = "http://5.9.65.151/mschuetz/potree/resources/pointclouds/riegl/retz/cloud.js" #sys.argv[1]
-viewer = pv.Plotter()
+path2 = "/home/mortacious/Datasets/ept/ringlok/ept.json"
+viewer = Plotter()
+loader = vtke.vtkEptLoader(path2)
 
-loader = vtke.vtkPotreeLoader()
-loader.SetPath(path)
 mapper = vtke.vtkTileHierarchyMapper()
+mapper.SetNumThreads(2)
 mapper.SetLoader(loader)
 mapper.SetPointBudget(10_000_000)
-mapper.SetNumThreads(4)
-loader.SetCacheSize(30_000_000)
+loader.SetCacheSize(20_000_000)
 actor = vtk.vtkActor()
 actor.SetMapper(mapper)
 actor.GetProperty().SetRepresentationToPoints()

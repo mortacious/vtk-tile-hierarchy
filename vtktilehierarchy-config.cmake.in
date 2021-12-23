@@ -1,0 +1,29 @@
+# Compute paths
+
+@PACKAGE_INIT@
+include(${CMAKE_CURRENT_LIST_DIR}/vtktilehierarchy-config-version.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/vtktilehierarchy-targets.cmake)
+
+get_filename_component(vtkTileHierarchy_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" PATH)
+set(vtkTileHierarchy_INCLUDE_DIRS "${PACKAGE_PREFIX_DIR}/@INCLUDE_INSTALL_DIR@")
+find_package(PkgConfig REQUIRED)
+
+### VTK
+set(vtkTileHierarchy_COMPONENTS
+        CommonCore
+        Python
+        RenderingOpenGL2)
+
+## VTK dependency
+#find_package(VTK 9.0 REQUIRED
+#        COMPONENTS
+#        ${vtkTileHierarchy_COMPONENTS}
+#        )
+#if(${VTK_VERSION} VERSION_LESS 9.0)
+#    message(FATAL_ERROR "VTK >= 9.0 is REQUIRED")
+#endif()
+
+# These are IMPORTED targets created by FooBarTargets.cmake
+set(vtkTileHierarchy_LIBRARIES vtkTileHierarchy::vtkTileHierarchy)
+
+set(vtkTileHierarchy_FOUND TRUE)

@@ -26,6 +26,10 @@ public:
             : release() { };
     ~vtkTileHierarchyLoaderRenderStatePython() override {
     };
+
+    void disarm() {
+        release.disarm();
+    }
 private:
     gil_scoped_release release;
 };
@@ -41,6 +45,7 @@ public:
 
 
     VTK_WRAPEXCLUDE std::unique_ptr<vtkTileHierarchyLoaderRenderState> PreRender() override;
+    VTK_WRAPEXCLUDE void PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) override;
 
     vtkGetMacro(InitializeEvent, unsigned long);
     vtkGetMacro(FetchNodeEvent, unsigned long);

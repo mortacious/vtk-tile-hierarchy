@@ -3,7 +3,7 @@
 //
 
 #include "vtkPotree1_7DatasetBase.h"
-#include <json/reader.h>
+#include <json/json.h>
 #include <queue>
 #include <unordered_set>
 #include <vtkPoints.h>
@@ -47,12 +47,15 @@ void vtkPotree1_7DatasetBase::LoadMetaData(const std::string& path) {
 
     auto stream = FetchFile(path);
 
-    Json::Reader reader;
+    Json::CharReaderBuilder builder;
     Json::Value data;
+    const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
+    JSONCPP_STRING err;
 
-    if(!reader.parse(stream, data, false)) {
+    if (!reader->parse(stream.c_str(), stream.c_str() + stream.size(), &data,
+                       &err)) {
         throw std::runtime_error(std::string("cannot parse meta data: ")
-                                 + reader.getFormattedErrorMessages());
+                                 + err);
     }
     JSON_GET(String, octree_dir_, data, "octreeDir");
     JSON_GET(UInt, point_count_, data, "points");

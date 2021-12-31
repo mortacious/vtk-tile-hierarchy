@@ -16,13 +16,11 @@ class vtkRenderer;
 class vtkActor;
 class vtkWindow;
 class vtkCamera;
-class vtkTileHierarchyLoader;
+class vtkTileHierarchyLoaderBase;
 class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
-class vtkTileHierarchyLoaderThread;
 
-//class CheckVisibilityCallback;
-//class ReRenderCallback;
+class ReRenderCallback;
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyMapper : public vtkMapper
 {
@@ -32,18 +30,18 @@ public:
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
 
-    void SetLoader(vtkTileHierarchyLoader* loader);
-    vtkTileHierarchyLoader* GetLoader();
-
-    void SetNumThreads(unsigned int num_threads);
-
-    vtkGetMacro(NumThreads, unsigned int);
+    void SetLoader(vtkTileHierarchyLoaderBase* loader);
+    vtkTileHierarchyLoaderBase* GetLoader();
 
     vtkSetMacro(PointBudget, std::size_t);
     vtkGetMacro(PointBudget, std::size_t);
 
     vtkSetMacro(MinimumNodeSize, float);
     vtkGetMacro(MinimumNodeSize, float);
+
+    vtkGetMacro(UseTimer, bool);
+    vtkSetMacro(UseTimer, bool);
+    vtkBooleanMacro(UseTimer, bool);
 
     /**
      * Standard method for rendering a mapper. This method will be
@@ -83,17 +81,13 @@ protected:
     std::size_t PointBudget;
     float MinimumNodeSize;
 
-    unsigned int NumThreads;
-    vtkSmartPointer<vtkTileHierarchyLoader> Loader;
-    //vtkSmartPointer<vtkRenderer> Renderer;
-    std::unique_ptr<vtkTileHierarchyLoaderThread> LoaderThread;
+    vtkSmartPointer<vtkTileHierarchyLoaderBase> Loader;
+    vtkSmartPointer<vtkRenderer> Renderer;
 
-    //vtkNew<CheckVisibilityCallback> CheckVisibilityObserver;
-    //vtkNew<ReRenderCallback> ReRenderObserver;
+    bool UseTimer;
+    vtkNew<ReRenderCallback> ReRenderObserver;
 private:
-    void InitLoaderThread();
-    //friend class CheckVisibilityCallback;
-    //friend class ReRenderCallback;
+    friend class ReRenderCallback;
 
     vtkTileHierarchyMapper(const vtkTileHierarchyMapper&) = delete;
     void operator=(const vtkTileHierarchyMapper&) = delete;

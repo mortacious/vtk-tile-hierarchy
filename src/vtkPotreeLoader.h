@@ -31,7 +31,7 @@ public:
     VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr node) override;
 
 
-    vtkSmartPointer<vtkMapper> MakeMapper() const override;
+    vtkSmartPointer<vtkMapper> MakeMapper() const;
 
     void SetPath(const std::string& path) {
         Path = path;

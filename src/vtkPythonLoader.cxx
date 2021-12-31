@@ -36,3 +36,12 @@ void vtkPythonLoader::PrintSelf(ostream &os, vtkIndent indent) {
 std::unique_ptr<vtkTileHierarchyLoaderRenderState> vtkPythonLoader::PreRender() {
     return std::make_unique<vtkTileHierarchyLoaderRenderStatePython>();
 }
+
+void vtkPythonLoader::PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) {
+    if(_Py_IsFinalizing()) {
+        std::cout << "FINALIZING" << std::endl;
+        auto python_state = dynamic_cast<vtkTileHierarchyLoaderRenderStatePython*>(state.get());
+        if(python_state)
+            python_state->disarm(); // do not reacquire the gil if we are finalizing the interpreter
+    }
+}

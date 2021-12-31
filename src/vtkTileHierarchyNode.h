@@ -84,7 +84,7 @@ public:
 
     void ResetNode();
 protected:
-    friend class vtkTileHierarchyLoader;
+    friend class vtkTileHierarchyLoaderBase;
     friend class vtkTileHierarchyMapper;
 
     vtkTileHierarchyNode();

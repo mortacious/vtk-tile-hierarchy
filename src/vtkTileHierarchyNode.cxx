@@ -3,7 +3,7 @@
 //
 
 #include "vtkTileHierarchyNode.h"
-#include "vtkTileHierarchyLoader.h"
+#include "vtkTileHierarchyLoaderBase.h"
 #include "vtkTileHierarchyMapper.h"
 #include <vtkWindow.h>
 #include <vtkMapper.h>

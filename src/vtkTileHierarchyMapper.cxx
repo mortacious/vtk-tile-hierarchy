@@ -4,8 +4,7 @@
 
 #include "vtkTileHierarchyMapper.h"
 #include "vtkTileHierarchyNode.h"
-#include "vtkPotreeLoader.h"
-#include "vtkTileHierarchyLoaderThread.h"
+#include "vtkTileHierarchyLoaderBase.h"
 #include "priorityQueue.h"
 #include <vtkObjectFactory.h>
 #include <vtkRenderer.h>
@@ -64,33 +63,54 @@ int intersect(vtkCamera* camera, const vtkBoundingBox& bbox, double aspect_ratio
     return result;
 }
 
+class ReRenderCallback: public vtkCallbackCommand {
+public:
+    static ReRenderCallback* New();
+    vtkTypeMacro(ReRenderCallback, vtkCallbackCommand);
+    // Here we Create a vtkCallbackCommand and reimplement it.
+    void Execute(vtkObject* caller, unsigned long evId, void* calldata) override
+    {
+        // Note the use of reinterpret_cast to cast the caller to the expected type.
+        if (vtkCommand::TimerEvent == evId && *reinterpret_cast<int*>(calldata) == TimerId) {
+            if(Mapper->ForceUpdate && Mapper->Renderer) {
+                Mapper->Renderer->GetRenderWindow()->Render(); // force a render
+            }
+        }
+    }
+
+    // Set pointers to any clientData or callData here.
+    vtkTileHierarchyMapper* Mapper;
+    int TimerId;
+protected:
+    ReRenderCallback(): Mapper(nullptr), TimerId(-1) {
+
+    }
+    ~ReRenderCallback() override = default;
+private:
+    ReRenderCallback(const ReRenderCallback&) = delete;
+    void operator=(const ReRenderCallback&) = delete;
+};
+
+vtkStandardNewMacro(ReRenderCallback);
+
 vtkStandardNewMacro(vtkTileHierarchyMapper);
 
 vtkTileHierarchyMapper::vtkTileHierarchyMapper()
- : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), NumThreads(2) {
+ : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), UseTimer(false) {
     SetStatic(true); // This mapper does not use the pipeline
+    ReRenderObserver->Mapper = this;
 }
 
-void vtkTileHierarchyMapper::SetLoader(vtkTileHierarchyLoader* loader) {
+void vtkTileHierarchyMapper::SetLoader(vtkTileHierarchyLoaderBase* loader) {
     Register(loader);
     Loader.TakeReference(loader);
-    InitLoaderThread();
-
-}
-
-void vtkTileHierarchyMapper::InitLoaderThread() {
-    LoaderThread = std::make_unique<vtkTileHierarchyLoaderThread>(Loader, NumThreads);
-    LoaderThread->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
+    Loader->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
     BoundsInitialized = false;
 }
 
-vtkTileHierarchyLoader* vtkTileHierarchyMapper::GetLoader() {
-    return Loader;
-}
 
-void vtkTileHierarchyMapper::SetNumThreads(unsigned int num_threads) {
-    NumThreads = num_threads;
-    InitLoaderThread();
+vtkTileHierarchyLoaderBase* vtkTileHierarchyMapper::GetLoader() {
+    return Loader;
 }
 
 void vtkTileHierarchyMapper::ComputeBounds() {
@@ -124,10 +144,26 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     auto loader_state = Loader->PreRender();
     ForceUpdate = false;
 
+    if(UseTimer) {
+        if (!Renderer || Renderer.Get() != ren) {
+            if (Renderer) {
+                Renderer->GetRenderWindow()->GetInteractor()->RemoveObserver(ReRenderObserver);
+            }
+            Renderer = vtkSmartPointer<vtkRenderer>(ren);
+            Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::TimerEvent, ReRenderObserver);
+            ReRenderObserver->TimerId = Renderer->GetRenderWindow()->GetInteractor()->CreateRepeatingTimer(
+                    250); // Check if nodes have been loaded 4 times a second
+        }
+    } else if(Renderer) {
+        Renderer->GetRenderWindow()->GetInteractor()->RemoveObserver(ReRenderObserver);
+        Renderer->GetRenderWindow()->GetInteractor()->DestroyTimer(ReRenderObserver->TimerId);
+        Renderer = nullptr;
+        ReRenderObserver->TimerId = -1;
+    }
+
     if(ren->GetRenderWindow()->GetActualSize()[1] < 10) {
         return; // Do not render very small screens
     }
-
     PriorityQueue<vtkTileHierarchyNodePtr , float> process_queue;
     auto root_node = Loader->GetRootNode();
     process_queue.push(root_node, 0);
@@ -159,7 +195,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
                     Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)
                 }
             } else {
-                LoaderThread->ScheduleForLoading(node, node_prio);
+                Loader->ScheduleForLoading(node, node_prio);
             }
         } else {
             Loader->UnloadNode(node, true); // remove this node and all below (they will be cached)

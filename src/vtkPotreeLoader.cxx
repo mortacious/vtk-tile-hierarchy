@@ -27,6 +27,7 @@ vtkPotreeLoader::vtkPotreeLoader()
     : Path() {}
 
 void vtkPotreeLoader::Initialize() {
+    Superclass::Initialize();
     if(Path.rfind("http://", 0) == 0) {
         Dataset = std::make_unique<vtkPotree1_7DatasetUrl>();
     } else {

@@ -4,7 +4,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 set (CMAKE_CXX_STANDARD 17)
 set(version 1.0)
 project(vtkTileHierarchy)
-
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR}/cmake)
 
 option(BUILD_PYTHON "Build the python wrappers" OFF)
 message(STATUS "Rpath is: ${CMAKE_INSTALL_RPATH}")
@@ -25,10 +25,15 @@ if(${VTK_VERSION} VERSION_LESS 9.0)
     message(FATAL_ERROR "VTK >= 9.0 is REQUIRED")
 endif()
 
+find_package(JsonCpp REQUIRED)
+include_directories(${JSONCPP_INCLUDE_DIRS})
+message(STATUS "JSONCPP include is ${JsonCpp_LIBRARIES}")
+
 find_package(CURL REQUIRED)
 if(CURL_FOUND)
     include_directories(${CURL_INCLUDE_DIR})
 endif()
+
 
 
 include(GNUInstallDirs)

@@ -18,23 +18,29 @@ size_t vtkTileHierarchyLoaderBase::TileTreeNodeSize::operator()(const vtkTileHie
 }
 
 vtkTileHierarchyLoaderBase::vtkTileHierarchyLoaderBase()
-    : Stop(false), MaxInQueue(10), Cache(15000000){
-
-}
+    : Initialized(false), Stop(true), MaxInQueue(10), Cache(15000000){}
 
 vtkTileHierarchyLoaderBase::~vtkTileHierarchyLoaderBase() noexcept {
     vtkTileHierarchyLoaderBase::Shutdown();
 }
 
-void vtkTileHierarchyLoaderBase::Shutdown() {
-    std::unique_lock<std::mutex> lock{Mutex};
-    Stop = true;
-    Cond.notify_all();
-    lock.unlock();
+void vtkTileHierarchyLoaderBase::Initialize() {
+    if(!Initialized) {
+        Stop = false;
+        DoInitialize();
+        Initialized = true;
+    }
 }
 
-void vtkTileHierarchyLoaderBase::Initialize() {
-    Stop = false;
+void vtkTileHierarchyLoaderBase::Shutdown() {
+    if(Initialized) {
+        UnscheduleAll();
+        Stop = true;
+        std::lock_guard<std::mutex> lock{Mutex};
+        Cond.notify_all();
+        DoShutdown();
+        Initialized = false;
+    }
 }
 
 void vtkTileHierarchyLoaderBase::UnscheduleAll() {
@@ -63,11 +69,13 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoaderBase::PopNextNode() {
     vtkTileHierarchyNodePtr node;
     while (!Stop) {
         std::unique_lock<std::mutex> lock{Mutex};
-        if (NeedToLoad.empty()) {
-            Cond.wait(lock, [&]() { return !NeedToLoad.empty() || Stop; });
+        while(NeedToLoad.empty() && !Stop) {
+            Cond.wait(lock,[&]() { return !NeedToLoad.empty() || Stop; });
         }
-        if (Stop)
+        if (Stop) {
+            lock.unlock();
             break;
+        }
 
         node = NeedToLoad.popMax().first;
 
@@ -82,10 +90,10 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoaderBase::PopNextNode() {
 }
 
 bool vtkTileHierarchyLoaderBase::TryGetNodeFromCache(vtkTileHierarchyNodePtr &node) {
-    std::scoped_lock<std::mutex> cache_lock{CacheMutex};
+    std::lock_guard<std::mutex> cache_lock{CacheMutex};
     if(Cache.exist(node)) {
         auto val = Cache.pop(node);
-        std::scoped_lock<std::mutex> node_lock{node->GetMutex()};
+        std::lock_guard<std::mutex> node_lock{node->GetMutex()};
         node->Mapper = vtkSmartPointer(std::move(val.first));
         node->Size = val.second;
         return true;
@@ -93,7 +101,7 @@ bool vtkTileHierarchyLoaderBase::TryGetNodeFromCache(vtkTileHierarchyNodePtr &no
     return false;
 }
 
-vtkTileHierarchyNodePtr vtkTileHierarchyLoaderBase::GetRootNode() {
+vtkTileHierarchyNode* vtkTileHierarchyLoaderBase::GetRootNode() {
     if(!RootNode) Initialize();
     return RootNode;
 }
@@ -103,26 +111,22 @@ void vtkTileHierarchyLoaderBase::SetRootNode(vtkTileHierarchyNode *root_node) {
     RootNode = vtkTileHierarchyNodePtr(root_node);
 }
 
-void vtkTileHierarchyLoaderBase::LoadNode(vtkTileHierarchyNodePtr &node, bool recursive) {
-    std::unique_lock<std::mutex> cache_lock{CacheMutex};
-    if(Cache.exist(node)) {
-        auto val = Cache.pop(node);
-        std::scoped_lock<std::mutex> node_lock{node->GetMutex()};
-        node->Mapper = vtkSmartPointer(std::move(val.first));
-        node->Size = val.second;
-    }
-    cache_lock.unlock();
+
+void vtkTileHierarchyLoaderBase::GetNode(vtkTileHierarchyNodePtr &node, bool recursive) {
+    TryGetNodeFromCache(node);
     std::unique_lock<std::mutex> node_lock{node->GetMutex()};
     if(!node->IsLoaded()) {
-        FetchNode(node);
+        LoadNode(node);
     }
+    node_lock.unlock();
+    InvokeNodeLoaded();
     // recursively load all nodes below as well
     if (recursive)
     {
         for (auto& child : node->Children)
         {
             if (child)
-                LoadNode(child, true);
+                GetNode(child, true);
         }
     }
 }
@@ -134,7 +138,7 @@ void vtkTileHierarchyLoaderBase::UnloadNode(vtkTileHierarchyNodePtr &node, bool 
         // cache this node if it is loaded and not in the cache
         Cache.put(node, std::make_pair(std::move(node->Mapper), node->GetSize()));
     }
-    node->Mapper = nullptr; // delete the mapper and it's ressources if not null already
+    node->Mapper = nullptr; // unset the mapper if not null already
     node_lock.unlock();
     if(recursive) {
         for (auto& child : node->Children) {
@@ -156,6 +160,18 @@ void vtkTileHierarchyLoaderBase::SetNodeLoadedCallBack(const std::function<void(
 void vtkTileHierarchyLoaderBase::InvokeNodeLoaded() const {
     if(Func)
         Func();
+}
+
+void vtkTileHierarchyLoaderBase::RunOnce() {
+    auto node = PopNextNode();
+    if(node)
+        GetNode(node, false);
+}
+
+void vtkTileHierarchyLoaderBase::Run() {
+    while(!Stop) {
+        RunOnce();
+    }
 }
 
 

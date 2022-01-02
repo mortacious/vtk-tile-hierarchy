@@ -26,9 +26,8 @@ public:
     vtkTypeMacro(vtkPotreeLoader, vtkTileHierarchyLoader);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
-    void Initialize() override;
 
-    VTK_WRAPEXCLUDE void FetchNode(vtkTileHierarchyNodePtr node) override;
+    VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr node) override;
 
 
     vtkSmartPointer<vtkMapper> MakeMapper() const;
@@ -43,6 +42,8 @@ public:
 protected:
     vtkPotreeLoader();
     ~vtkPotreeLoader() override = default;
+
+    void DoInitialize() override;
 
     std::string Path;
     std::unique_ptr<vtkPotreeDatasetBase> Dataset;

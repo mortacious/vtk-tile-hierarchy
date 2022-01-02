@@ -26,17 +26,19 @@ public:
     unsigned int GetNumThreads() const {
         return Threads.size();
     };
+
+    void Shutdown() override;
+    void Initialize() override;
+
 protected:
     vtkTileHierarchyLoader();
     ~vtkTileHierarchyLoader() noexcept override;
 
-    void Shutdown() override;
 
 
+    unsigned int NumThreads;
     std::vector<std::thread> Threads;
 private:
-    void Run();
-
     vtkTileHierarchyLoader(const vtkTileHierarchyLoader&) = delete;
     void operator=(const vtkTileHierarchyLoader&) = delete;
 };

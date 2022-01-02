@@ -8,6 +8,7 @@
 
 #include <vtkSmartPointer.h>
 #include <memory>
+#include "vtkTileHierarchyLoaderBase.h"
 #include "vtkTileHierarchyLoader.h"
 #include "vtkTileHierarchyModule.h" // For export macro
 #include "gil.h"
@@ -19,45 +20,51 @@ class vtkBoundingBox;
 class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
 
-
-class vtkTileHierarchyLoaderRenderStatePython: public vtkTileHierarchyLoaderRenderState {
+VTK_WRAPEXCLUDE class vtkTileHierarchyLoaderRenderStatePython: public vtkTileHierarchyLoaderRenderState {
 public:
     vtkTileHierarchyLoaderRenderStatePython()
             : release() { };
     ~vtkTileHierarchyLoaderRenderStatePython() override {
     };
-
-    void disarm() {
-        release.disarm();
-    }
 private:
     gil_scoped_release release;
 };
 
-class VTKTILEHIERARCHY_EXPORT vtkPythonLoader: public vtkTileHierarchyLoader {
+class VTKTILEHIERARCHY_EXPORT vtkPythonLoaderBase: public vtkTileHierarchyLoaderBase {
 public:
-    static vtkPythonLoader* New();
-    vtkTypeMacro(vtkPythonLoader, vtkTileHierarchyLoader);
+    static vtkPythonLoaderBase* New();
+    vtkTypeMacro(vtkPythonLoaderBase, vtkTileHierarchyLoaderBase);
 
     void PrintSelf(ostream& os, vtkIndent indent) override;
-    void Initialize() override;
-    void FetchNode(vtkTileHierarchyNodePtr node) override;
 
+    VTK_WRAPEXCLUDE void LoadNode(vtkTileHierarchyNodePtr node) override;
 
     VTK_WRAPEXCLUDE std::unique_ptr<vtkTileHierarchyLoaderRenderState> PreRender() override;
-    VTK_WRAPEXCLUDE void PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) override;
 
     vtkGetMacro(InitializeEvent, unsigned long);
+    vtkGetMacro(ShutdownEvent, unsigned long);
     vtkGetMacro(FetchNodeEvent, unsigned long);
+
+
+    void Run() override; // make run public here to call it from python
+
+    void SetBoundingBox(const vtkBoundingBox& bbox) {
+        BoundingBox = bbox;
+    }
 protected:
-    vtkPythonLoader();
-    ~vtkPythonLoader() override = default;
+    vtkPythonLoaderBase();
+    ~vtkPythonLoaderBase() override = default;
+
+    void DoInitialize() override;
+    void DoShutdown() override;
 
     unsigned long InitializeEvent;
+    unsigned long ShutdownEvent;
     unsigned long FetchNodeEvent;
+
 private:
-    vtkPythonLoader(const vtkPythonLoader&) = delete;
-    void operator=(const vtkPythonLoader&) = delete;
+    vtkPythonLoaderBase(const vtkPythonLoaderBase&) = delete;
+    void operator=(const vtkPythonLoaderBase&) = delete;
 
 };
 

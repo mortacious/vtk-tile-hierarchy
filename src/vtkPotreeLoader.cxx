@@ -26,8 +26,7 @@ vtkStandardNewMacro(vtkPotreeLoader);
 vtkPotreeLoader::vtkPotreeLoader()
     : Path() {}
 
-void vtkPotreeLoader::Initialize() {
-    Superclass::Initialize();
+void vtkPotreeLoader::DoInitialize() {
     if(Path.rfind("http://", 0) == 0) {
         Dataset = std::make_unique<vtkPotree1_7DatasetUrl>();
     } else {
@@ -40,7 +39,7 @@ void vtkPotreeLoader::Initialize() {
 }
 
 
-void vtkPotreeLoader::FetchNode(vtkTileHierarchyNodePtr node) {
+void vtkPotreeLoader::LoadNode(vtkTileHierarchyNodePtr node) {
     //std::lock_guard<std::mutex> node_lock(node->GetMutex());
     auto casted_node = vtkPointHierarchyNode::SafeDownCast(node);
 

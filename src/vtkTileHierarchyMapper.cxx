@@ -96,7 +96,7 @@ vtkStandardNewMacro(ReRenderCallback);
 vtkStandardNewMacro(vtkTileHierarchyMapper);
 
 vtkTileHierarchyMapper::vtkTileHierarchyMapper()
- : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), UseTimer(false) {
+ : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), UseTimer(false), IsShutdown(false) {
     SetStatic(true); // This mapper does not use the pipeline
     ReRenderObserver->Mapper = this;
 }
@@ -115,14 +115,15 @@ vtkTileHierarchyLoaderBase* vtkTileHierarchyMapper::GetLoader() {
 
 void vtkTileHierarchyMapper::ComputeBounds() {
     vtkMath::UninitializeBounds(this->Bounds);
-    Loader->GetRootNode()->GetBoundingBox().GetBounds(Bounds);
+    Loader->GetBoundingBox().GetBounds(Bounds);
     BoundsInitialized = true;
 }
 
 void vtkTileHierarchyMapper::ReleaseGraphicsResources(vtkWindow* win)
 {
-    //auto root_node = Loader->GetRootNode();
-    //Loader->UnloadNode(root_node, true);
+    if(Loader) {
+        Loader->Shutdown();
+    }
 }
 
 double* vtkTileHierarchyMapper::GetBounds()
@@ -141,8 +142,12 @@ void vtkTileHierarchyMapper::OnNodeLoaded() {
 }
 
 void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
+    if(!Loader->GetInitialized()) {
+        Loader->Initialize();
+    }
     auto loader_state = Loader->PreRender();
     ForceUpdate = false;
+    IsShutdown = true;
 
     if(UseTimer) {
         if (!Renderer || Renderer.Get() != ren) {

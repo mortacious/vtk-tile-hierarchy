@@ -8,6 +8,7 @@
 #include <vtkObject.h>
 #include <vtkSetGet.h>
 #include <vtkCommand.h>
+#include <vtkBoundingBox.h>
 #include <mutex>
 #include <functional>
 #include <condition_variable>
@@ -25,23 +26,38 @@ struct std::hash<vtkTileHierarchyNodePtr> {
     std::size_t operator()(vtkTileHierarchyNodePtr const &s) const noexcept;
 };
 
-struct vtkTileHierarchyLoaderRenderState {
+VTK_WRAPEXCLUDE struct vtkTileHierarchyLoaderRenderState {
     vtkTileHierarchyLoaderRenderState() = default;
     virtual ~vtkTileHierarchyLoaderRenderState() = default;
 };
 
-VTK_WRAPEXCLUDE class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoaderBase: public vtkObject {
+class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoaderBase: public vtkObject {
 public:
     vtkTypeMacro(vtkTileHierarchyLoaderBase, vtkObject);
     void PrintSelf(ostream& os, vtkIndent indent) override;
 
     virtual void Initialize();
+    virtual void Shutdown();
+
+    const vtkBoundingBox& GetBoundingBox() const {
+        return BoundingBox;
+    }
+
     void UnscheduleAll();
     void ScheduleForLoading(vtkTileHierarchyNodePtr& node, float priority);
-    vtkTileHierarchyNodePtr PopNextNode();
+    virtual void LoadNode(vtkTileHierarchyNodePtr node) = 0;
+
+    virtual std::unique_ptr<vtkTileHierarchyLoaderRenderState> PreRender() {
+        return std::make_unique<vtkTileHierarchyLoaderRenderState>();
+    };
+
+    virtual void PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) {
+    };
 
     vtkGetMacro(MaxInQueue, unsigned int);
     vtkSetMacro(MaxInQueue, unsigned int);
+
+    vtkGetMacro(Initialized, bool);
 
     void SetCacheSize(size_t cs) {
         Cache.max_cache_size(cs);
@@ -51,31 +67,18 @@ public:
         return Cache.cache_size();
     }
 
-    vtkTileHierarchyNodePtr GetRootNode();
+    vtkTileHierarchyNode* GetRootNode();
     void SetRootNode(vtkTileHierarchyNode* root_node);
-
-    void LoadNode(vtkTileHierarchyNodePtr& node) {
-        LoadNode(node, false);
-    }
-
-    virtual void LoadNode(vtkTileHierarchyNodePtr& node, bool recursive);
 
     void UnloadNode(vtkTileHierarchyNodePtr& node) {
         UnloadNode(node, false);
     }
 
-    virtual std::unique_ptr<vtkTileHierarchyLoaderRenderState> PreRender() {
-        return std::make_unique<vtkTileHierarchyLoaderRenderState>();
-    };
-
-    virtual void PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) {
-    };
-
     void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive);
 
-    virtual void FetchNode(vtkTileHierarchyNodePtr node) = 0;
-
     void SetNodeLoadedCallBack(const std::function<void()>& func);
+
+    vtkGetMacro(Stop, bool);
 
 protected:
     vtkTileHierarchyLoaderBase();
@@ -84,8 +87,16 @@ protected:
     bool TryGetNodeFromCache(vtkTileHierarchyNodePtr& node);
     void InvokeNodeLoaded() const;
 
-    virtual void Shutdown();
+    vtkTileHierarchyNodePtr PopNextNode();
+    virtual void GetNode(vtkTileHierarchyNodePtr& node, bool recursive);
 
+    virtual void RunOnce();
+    virtual void Run();
+
+    virtual void DoInitialize() {}
+    virtual void DoShutdown() {}
+
+    bool Initialized;
     std::atomic_bool Stop;
     mutable std::mutex Mutex;
     std::condition_variable Cond;
@@ -115,6 +126,7 @@ protected:
     std::mutex CacheMutex;
 
     std::function<void()> Func;
+    vtkBoundingBox BoundingBox;
 private:
     vtkTileHierarchyLoaderBase(const vtkTileHierarchyLoaderBase&) = delete;
     void operator=(const vtkTileHierarchyLoaderBase&) = delete;

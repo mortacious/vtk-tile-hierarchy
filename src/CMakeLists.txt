@@ -7,7 +7,7 @@ set(classes
   vtkTileHierarchyMapper)
 
 if(BUILD_PYTHON)
-    list(APPEND classes vtkPythonLoader)
+    list(APPEND classes vtkPythonLoaderBase)
 endif()
 
 set(additional_srcs

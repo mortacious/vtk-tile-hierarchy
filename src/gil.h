@@ -42,20 +42,6 @@ public:
         // initialization race could occur as multiple threads try `gil_scoped_acquire`.
         tstate = PyEval_SaveThread();
     }
-//
-//    gil_scoped_release(gil_scoped_release&& other) noexcept
-//        : tstate(other.tstate), active(other.active) {
-//        other.tstate = nullptr;
-//        other.active = false;
-//    }
-//
-//    gil_scoped_release& operator=(gil_scoped_release&& other) noexcept {
-//        tstate = other.tstate;
-//        other.tstate = nullptr;
-//        active = other.active;
-//        other.active = false;
-//        return *this;
-//    }
 
     /// This method will disable the PyThreadState_DeleteCurrent call and the
     /// GIL won't be acquired. This method should be used if the interpreter
@@ -67,8 +53,9 @@ public:
     }
 
     ~gil_scoped_release() {
-        if (!tstate)
+        if (!tstate || _Py_IsFinalizing()) {
             return;
+        }
         // `PyEval_RestoreThread()` should not be called if runtime is finalizing
         if (active)
             PyEval_RestoreThread(tstate);

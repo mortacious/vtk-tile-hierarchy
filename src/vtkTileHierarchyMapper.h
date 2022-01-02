@@ -21,6 +21,8 @@ class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
 
 class ReRenderCallback;
+class ExitCallback;
+
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyMapper : public vtkMapper
 {
@@ -85,7 +87,9 @@ protected:
     vtkSmartPointer<vtkRenderer> Renderer;
 
     bool UseTimer;
+    bool IsShutdown;
     vtkNew<ReRenderCallback> ReRenderObserver;
+
 private:
     friend class ReRenderCallback;
 

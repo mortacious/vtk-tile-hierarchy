@@ -81,7 +81,9 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
 
         self.dtype = np.dtype({"names": field_names, "formats": field_formats})
 
-        self.bounds = np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3) - np.asarray(self.offset)
+        bounds = vtk.vtkBoundingBox((np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3) - np.asarray(self.offset)).T.ravel())
+        self.SetBoundingBox(bounds)
+
 
     @staticmethod
     def is_valid(path: Path):
@@ -154,17 +156,17 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
 
         return num_nodes, num_points
 
-    def OnInitialize(self):
+    def on_initialize(self):
         if self.root_node is None:
             name = "0-0-0-0"
-            self.root_node = vtkTileHierarchyNodePython(bounds=self.bounds.T, num_children=8, name=name)
+            self.root_node = vtkTileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
             with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
                 hierarchy_data = json.load(f)
             num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node)
             print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
         return self.root_node
 
-    def OnFetchNode(self, node: vtkTileHierarchyNodePython):
+    def on_fetch_node(self, node: vtkTileHierarchyNodePython):
         name = node["name"]
         filepath = self.path / "ept-data" / (name + ".bin")
         data = np.fromfile(filepath, dtype=self.dtype)

@@ -4,7 +4,7 @@ from pyvista.plotting import Plotter
 path2 = "/home/mortacious/Datasets/ept/ringlok/ept.json"
 loader = vtke.vtkEptLoader(path2)
 mapper = vtke.vtkTileHierarchyMapper()
-#mapper.SetUseTimer(False)
+mapper.SetUseTimer(False)
 mapper.SetLoader(loader)
 mapper.SetPointBudget(10_000_000)
 loader.SetCacheSize(30_000_000)

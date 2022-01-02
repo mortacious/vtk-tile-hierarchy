@@ -87,7 +87,6 @@ protected:
     vtkSmartPointer<vtkRenderer> Renderer;
 
     bool UseTimer;
-    bool IsShutdown;
     vtkNew<ReRenderCallback> ReRenderObserver;
 
 private:

@@ -96,8 +96,8 @@ vtkStandardNewMacro(ReRenderCallback);
 vtkStandardNewMacro(vtkTileHierarchyMapper);
 
 vtkTileHierarchyMapper::vtkTileHierarchyMapper()
- : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), UseTimer(false), IsShutdown(false) {
-    SetStatic(true); // This mapper does not use the pipeline
+ : BoundsInitialized(false), ForceUpdate(false), PointBudget(1000000), MinimumNodeSize(30.f), UseTimer(false) {
+    vtkMapper::SetStatic(true); // This mapper does not use the pipeline
     ReRenderObserver->Mapper = this;
 }
 
@@ -147,7 +147,6 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     }
     auto loader_state = Loader->PreRender();
     ForceUpdate = false;
-    IsShutdown = true;
 
     if(UseTimer) {
         if (!Renderer || Renderer.Get() != ren) {
@@ -157,7 +156,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
             Renderer = vtkSmartPointer<vtkRenderer>(ren);
             Renderer->GetRenderWindow()->GetInteractor()->AddObserver(vtkCommand::TimerEvent, ReRenderObserver);
             ReRenderObserver->TimerId = Renderer->GetRenderWindow()->GetInteractor()->CreateRepeatingTimer(
-                    250); // Check if nodes have been loaded 4 times a second
+                    100); // Check if nodes have been loaded 4 times a second
         }
     } else if(Renderer) {
         Renderer->GetRenderWindow()->GetInteractor()->RemoveObserver(ReRenderObserver);

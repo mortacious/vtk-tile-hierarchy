@@ -1,4 +1,4 @@
 from .vtkTileHierarchy import vtkPotreeLoader, vtkTileHierarchyNode, vtkPointHierarchyNode, vtkTileHierarchyMapper
-from .python_hierarchy_loader import vtkPythonHierarchyLoader
-from .python_hierarchy_node import vtkTileHierarchyNodePython
-from .ept_loader import vtkEptLoader
+from .python_hierarchy_loader import PythonHierarchyLoader
+from .python_hierarchy_node import TileHierarchyNodePython
+from .ept_loader import EptLoader

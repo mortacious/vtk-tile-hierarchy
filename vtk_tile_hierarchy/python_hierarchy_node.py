@@ -3,7 +3,7 @@ import numpy as np
 import vtk
 
 
-class vtkTileHierarchyNodePython(vtkTileHierarchyNode):
+class TileHierarchyNodePython(vtkTileHierarchyNode):
     def __init__(self, parent=None, bounds=None, num_children=None, **kwargs):
         super().__init__()
         if parent is not None:

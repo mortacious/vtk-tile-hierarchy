@@ -1,5 +1,5 @@
-from .python_hierarchy_loader import vtkPythonHierarchyLoader
-from .python_hierarchy_node import vtkTileHierarchyNodePython
+from .python_hierarchy_loader import PythonHierarchyLoader
+from .python_hierarchy_node import TileHierarchyNodePython
 from pathlib import Path
 import json
 import numpy as np
@@ -31,7 +31,7 @@ def to_numpy_dtype(type, size):
     return np.dtype(_type_to_numpy_kind[str(type)] + str(size))
 
 
-class vtkEptLoader(vtkPythonHierarchyLoader):
+class EptLoader(PythonHierarchyLoader):
     def __init__(self, path):
         super().__init__()
         print(path)
@@ -136,13 +136,13 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
 
         return vtk.vtkBoundingBox(min[0], max[0], min[1], max[1], min[2], max[2])
 
-    def parse_hierarchy_data(self, hierarchy_data, node: vtkTileHierarchyNodePython, recursive=True):
+    def parse_hierarchy_data(self, hierarchy_data, node: TileHierarchyNodePython, recursive=True):
         name = node['name']
         node.size = hierarchy_data[name]
         num_nodes, num_points = 1, node.size
         for i, child in enumerate(self.yield_children(name)):
             if child in hierarchy_data:
-                child_node = vtkTileHierarchyNodePython(bounds=self.create_child_bb(node.bounds, i),
+                child_node = TileHierarchyNodePython(bounds=self.create_child_bb(node.bounds, i),
                                                         parent=node, num_children=8, name=child)
                 node.set_child(i, child_node)
 
@@ -160,14 +160,14 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
     def on_initialize(self):
         if self.root_node is None:
             name = "0-0-0-0"
-            self.root_node = vtkTileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
+            self.root_node = TileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
             with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
                 hierarchy_data = json.load(f)
             num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node, recursive=False)
             print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
         return self.root_node
 
-    def on_fetch_node(self, node: vtkTileHierarchyNodePython):
+    def on_fetch_node(self, node: TileHierarchyNodePython):
         name = node["name"]
 
         if node.size < 0:  # the hierarchy has not been parsed for this node so load it first

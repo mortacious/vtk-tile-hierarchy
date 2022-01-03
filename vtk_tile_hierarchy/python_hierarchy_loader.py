@@ -5,7 +5,7 @@ from vtkmodules.util.misc import calldata_type
 from threading import Thread
 
 
-class vtkPythonHierarchyLoader(vtkPythonLoaderBase, ABC):
+class PythonHierarchyLoader(vtkPythonLoaderBase, ABC):
     def __init__(self):
         super().__init__()
         # the callbacks are passed through vtk's event system

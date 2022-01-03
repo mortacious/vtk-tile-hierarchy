@@ -1,8 +1,10 @@
 import vtk
 import vtk_tile_hierarchy as vtke
-from pyvista.plotting import Plotter
+#from pyvista.plotting import Plotter
+from hyperspace.viewer import Viewer
+
 path2 = "/home/mortacious/Datasets/ept/ringlok/ept.json"
-loader = vtke.vtkEptLoader(path2)
+loader = vtke.EptLoader(path2)
 mapper = vtke.vtkTileHierarchyMapper()
 mapper.SetUseTimer(False)
 mapper.SetLoader(loader)
@@ -13,6 +15,6 @@ actor.SetMapper(mapper)
 actor.GetProperty().SetRepresentationToPoints()
 actor.GetProperty().SetPointSize(3)
 
-viewer = Plotter()
+viewer = Viewer(show=False)
 viewer.add_actor(actor)
 viewer.show()

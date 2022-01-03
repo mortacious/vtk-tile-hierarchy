@@ -14,54 +14,8 @@
 #include <vtkWindow.h>
 #include <vtkExecutive.h>
 #include <vtkRenderWindowInteractor.h>
-
-enum FrustumCull
-{
-    INSIDE_FRUSTUM,
-    INTERSECT_FRUSTUM,
-    OUTSIDE_FRUSTUM
-};
-
-int intersect(vtkCamera* camera, const vtkBoundingBox& bbox, double aspect_ratio) {
-    int result = INSIDE_FRUSTUM;
-    double frustum[24];
-    camera->GetFrustumPlanes(aspect_ratio, frustum);
-
-    for(int i =0; i < 6; i++){
-        // iterate all 6 planes
-        double a = frustum[(i*4)];
-        double b = frustum[(i*4)+1];
-        double c = frustum[(i*4)+2];
-        double d = frustum[(i*4)+3];
-
-        //std::cout << i << ": " << a << "x + " << b << "y + " << c << "z + " << d << std::endl;
-
-        //  Basic VFC algorithm
-        const double* max_point = bbox.GetMaxPoint();
-        const double* min_point = bbox.GetMinPoint();
-        vtkVector3d center((max_point[0] - min_point[0]) / 2 + min_point[0],
-                           (max_point[1] - min_point[1]) / 2 + min_point[1],
-                           (max_point[2] - min_point[2]) / 2 + min_point[2]);
-        vtkVector3d radius(std::abs (static_cast<double> (max_point[0] - center[0])),
-                           std::abs (static_cast<double> (max_point[1] - center[1])),
-                           std::abs (static_cast<double> (max_point[2] - center[2])));
-
-        double m = (center[0] * a) + (center[1] * b) + (center[2] * c) + d;
-        double n = (radius[0] * std::abs(a)) + (radius[1] * std::abs(b)) + (radius[2] * std::abs(c));
-
-        if (m + n < 0){
-            result = OUTSIDE_FRUSTUM;
-            break;
-        }
-
-        if (m - n < 0)
-        {
-            result = INTERSECT_FRUSTUM;
-        }
-    }
-
-    return result;
-}
+#include <vtkExtractSelectedFrustum.h>
+#include <vtkPlanes.h>
 
 class ReRenderCallback: public vtkCallbackCommand {
 public:
@@ -168,19 +122,21 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     if(ren->GetRenderWindow()->GetActualSize()[1] < 10) {
         return; // Do not render very small screens
     }
+    InitFrustum(ren);
     PriorityQueue<vtkTileHierarchyNodePtr , float> process_queue;
     auto root_node = Loader->GetRootNode();
     process_queue.push(root_node, 0);
     std::size_t remaining_points = PointBudget;
-    auto cam = ren->GetActiveCamera();
-    double aspect_ratio = ren->GetTiledAspectRatio();
+    double bounds[6];
 
     while(!process_queue.empty()) {
         auto element = process_queue.top();
         auto node = std::get<0>(element);
         auto node_prio = std::get<1>(element);
         process_queue.pop();
-        if(intersect(cam, node->GetBoundingBox(), aspect_ratio) != OUTSIDE_FRUSTUM) {
+
+        node->GetBoundingBox().GetBounds(bounds);
+        if(FrustumExtractor->OverallBoundsTest(bounds) != 0) {
             if(node->IsLoaded()) {
                 if(node->GetSize() <= remaining_points) {
                     remaining_points -= node->GetSize();
@@ -247,6 +203,14 @@ float vtkTileHierarchyMapper::GetPriority(const vtkTileHierarchyNodePtr &node, v
     float angle = std::acos(cam_forward[0] * cam_to_node[0] + cam_forward[1] * cam_to_node[1] + cam_forward[2] * cam_to_node[2]);
     float angle_weight = std::abs(angle) + 1;
     return projected_size / angle_weight;
+}
+
+void vtkTileHierarchyMapper::InitFrustum(vtkRenderer *ren) {
+    double frustum[24];
+    ren->GetActiveCamera()->GetFrustumPlanes(ren->GetTiledAspectRatio(), frustum);
+    vtkNew<vtkPlanes> planes;
+    planes->SetFrustumPlanes(frustum);
+    FrustumExtractor->SetFrustum(planes);
 }
 
 

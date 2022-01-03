@@ -26,6 +26,7 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b)
 
+
 def to_numpy_dtype(type, size):
     return np.dtype(_type_to_numpy_kind[str(type)] + str(size))
 
@@ -135,7 +136,7 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
 
         return vtk.vtkBoundingBox(min[0], max[0], min[1], max[1], min[2], max[2])
 
-    def parse_hierarchy_data(self, hierarchy_data, node: vtkTileHierarchyNodePython):
+    def parse_hierarchy_data(self, hierarchy_data, node: vtkTileHierarchyNodePython, recursive=True):
         name = node['name']
         node.size = hierarchy_data[name]
         num_nodes, num_points = 1, node.size
@@ -145,7 +146,7 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
                                                         parent=node, num_children=8, name=child)
                 node.set_child(i, child_node)
 
-                if hierarchy_data[child] < 0:
+                if recursive and hierarchy_data[child] < 0:
                     with open(self.path / "ept-hierarchy" / child + ".json", 'r') as f:
                         new_hierarchy_data = json.load(f)
                     num_nodes_sub, num_points_sub = self.parse_hierarchy_data(new_hierarchy_data, child_node)
@@ -162,12 +163,19 @@ class vtkEptLoader(vtkPythonHierarchyLoader):
             self.root_node = vtkTileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
             with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
                 hierarchy_data = json.load(f)
-            num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node)
+            num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node, recursive=False)
             print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
         return self.root_node
 
     def on_fetch_node(self, node: vtkTileHierarchyNodePython):
         name = node["name"]
+
+        if node.size < 0:  # the hierarchy has not been parsed for this node so load it first
+            print("parsing new hierarchy")
+            with open(self.path / "ept-hierarchy" / name + ".json", 'r') as f:
+                new_hierarchy_data = json.load(f)
+            self.parse_hierarchy_data(new_hierarchy_data, node, recursive=False)
+
         filepath = self.path / "ept-data" / (name + ".bin")
         data = np.fromfile(filepath, dtype=self.dtype)
         positions = (data["Position"] * self.scale).astype(np.float32)# - self.offset

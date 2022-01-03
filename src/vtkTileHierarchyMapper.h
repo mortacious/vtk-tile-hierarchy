@@ -17,11 +17,11 @@ class vtkActor;
 class vtkWindow;
 class vtkCamera;
 class vtkTileHierarchyLoaderBase;
+class vtkExtractSelectedFrustum;
 class vtkTileHierarchyNode;
 using vtkTileHierarchyNodePtr = vtkSmartPointer<vtkTileHierarchyNode>;
 
 class ReRenderCallback;
-class ExitCallback;
 
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyMapper : public vtkMapper
@@ -89,6 +89,8 @@ protected:
     bool UseTimer;
     vtkNew<ReRenderCallback> ReRenderObserver;
 
+    vtkNew<vtkExtractSelectedFrustum> FrustumExtractor;
+    void InitFrustum(vtkRenderer *ren);
 private:
     friend class ReRenderCallback;
 

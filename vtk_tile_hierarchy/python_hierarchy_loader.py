@@ -24,7 +24,6 @@ class vtkPythonHierarchyLoader(vtkPythonLoaderBase, ABC):
                 thread.join()
             self._threads = None
 
-
     def _init_threads(self):
         if self._threads is not None:
             self.Shutdown()

@@ -36,8 +36,9 @@ void vtkTileHierarchyLoaderBase::Shutdown() {
     if(Initialized) {
         UnscheduleAll();
         Stop = true;
-        std::lock_guard<std::mutex> lock{Mutex};
+        std::unique_lock<std::mutex> lock{Mutex};
         Cond.notify_all();
+        lock.unlock();
         DoShutdown();
         Initialized = false;
     }
@@ -70,8 +71,9 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoaderBase::PopNextNode() {
     while (!Stop) {
         std::unique_lock<std::mutex> lock{Mutex};
         while(NeedToLoad.empty() && !Stop) {
-            Cond.wait(lock,[&]() { return !NeedToLoad.empty() || Stop; });
+            Cond.wait(lock, [&]() { return !NeedToLoad.empty() || Stop; });
         }
+
         if (Stop) {
             lock.unlock();
             break;

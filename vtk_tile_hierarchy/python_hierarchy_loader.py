@@ -69,4 +69,5 @@ class PythonHierarchyLoader(vtkPythonLoaderBase, ABC):
     @calldata_type(vtk.VTK_OBJECT)
     def _on_fetch_node(self, _, __, node):
         mapper = self.on_fetch_node(node)
+        mapper.Update()
         node.SetMapper(mapper)

@@ -311,5 +311,4 @@ class EptLoader(PythonHierarchyLoader):
         mapper.SetScalarModeToUsePointData()
         mapper.SetScaleFactor(0)  # Render just points
         mapper.SetInputDataObject(polydata)
-        mapper.Update()
         return mapper

@@ -13,21 +13,28 @@
 vtkStandardNewMacro(vtkTileHierarchyNode);
 
 vtkTileHierarchyNode::vtkTileHierarchyNode()
-: Parent(nullptr), Size(0) {}
+: Parent(nullptr), Size(0), Loading(false) {}
 
 void vtkTileHierarchyNode::PrintSelf(ostream &os, vtkIndent indent) {
     Superclass::PrintSelf(os, indent);
 }
 
 void vtkTileHierarchyNode::Render(vtkRenderer *ren, vtkActor *a) {
-    //std::lock_guard<std::mutex> lock{Mutex};
     if(!Mapper) return;
-
+    std::scoped_lock<std::mutex> lock{Mutex};
     Mapper->Render(ren, a);
 }
 
 bool vtkTileHierarchyNode::IsLoaded() const {
     return Mapper;
+}
+
+void vtkTileHierarchyNode::SetLoading() {
+    Loading = true;
+}
+
+bool vtkTileHierarchyNode::LoadRequired() const {
+    return !Loading && !IsLoaded();
 }
 
 void vtkTileHierarchyNode::SetNumChildren(unsigned int num_children) {
@@ -49,11 +56,13 @@ void vtkTileHierarchyNode::SetChild(vtkIdType idx, vtkTileHierarchyNode* child) 
 }
 
 void vtkTileHierarchyNode::ResetNode() {
+    std::scoped_lock<std::mutex> lock(Mutex);
     Mapper = nullptr;
-    //Size = 0;
 }
 
 void vtkTileHierarchyNode::SetMapper(vtkMapper* mapper) {
+    std::scoped_lock<std::mutex> lock(Mutex);
+    Loading = false;
     Mapper = vtkSmartPointer<vtkMapper>(mapper);
 }
 

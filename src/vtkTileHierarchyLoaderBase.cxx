@@ -54,7 +54,7 @@ void vtkTileHierarchyLoaderBase::UnscheduleAll() {
 void vtkTileHierarchyLoaderBase::ScheduleForLoading(vtkTileHierarchyNodePtr &node, float priority) {
     if(TryGetNodeFromCache(node)) {
         //InvokeEvent(NodeLoaded, reinterpret_cast<void*>(node.GetPointer()));
-        InvokeNodeLoaded();
+        InvokeNodeLoaded(node);
     } else {
         std::lock_guard<std::mutex> lock{Mutex};
 
@@ -117,11 +117,14 @@ void vtkTileHierarchyLoaderBase::SetRootNode(vtkTileHierarchyNode *root_node) {
 void vtkTileHierarchyLoaderBase::GetNode(vtkTileHierarchyNodePtr &node, bool recursive) {
     TryGetNodeFromCache(node);
     std::unique_lock<std::mutex> node_lock{node->GetMutex()};
-    if(!node->IsLoaded()) {
+    if(node->LoadRequired()) {
+        node->SetLoading();
+        node_lock.unlock();
         LoadNode(node);
     }
-    node_lock.unlock();
-    InvokeNodeLoaded();
+    if(node_lock)
+        node_lock.unlock();
+    InvokeNodeLoaded(node);
     // recursively load all nodes below as well
     if (recursive)
     {
@@ -155,13 +158,13 @@ void vtkTileHierarchyLoaderBase::PrintSelf(ostream &os, vtkIndent indent) {
     Superclass::PrintSelf(os, indent);
 }
 
-void vtkTileHierarchyLoaderBase::SetNodeLoadedCallBack(const std::function<void()> &func) {
-    Func = func;
+void vtkTileHierarchyLoaderBase::SetNodeLoadedCallBack(OnNodeLoadedFunction func) {
+    Func = std::move(func);
 }
 
-void vtkTileHierarchyLoaderBase::InvokeNodeLoaded() const {
+void vtkTileHierarchyLoaderBase::InvokeNodeLoaded(vtkTileHierarchyNodePtr& node) const {
     if(Func)
-        Func();
+        Func(node);
 }
 
 void vtkTileHierarchyLoaderBase::RunOnce() {

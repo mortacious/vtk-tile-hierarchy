@@ -58,7 +58,7 @@ vtkTileHierarchyMapper::vtkTileHierarchyMapper()
 void vtkTileHierarchyMapper::SetLoader(vtkTileHierarchyLoaderBase* loader) {
     Register(loader);
     Loader.TakeReference(loader);
-    Loader->SetNodeLoadedCallBack([this]() {OnNodeLoaded();});
+    Loader->SetNodeLoadedCallBack([this](vtkTileHierarchyNodePtr& node) {OnNodeLoaded(node);});
     BoundsInitialized = false;
 }
 
@@ -92,7 +92,6 @@ void vtkTileHierarchyMapper::PrintSelf(ostream &os, vtkIndent indent) {
 }
 
 void vtkTileHierarchyMapper::OnNodeLoaded(vtkTileHierarchyNodePtr& node) {
-    node->Mapper->Update
     ForceUpdate = true;
 }
 

@@ -32,6 +32,8 @@ VTK_WRAPEXCLUDE struct vtkTileHierarchyLoaderRenderState {
 };
 
 class VTKTILEHIERARCHY_EXPORT vtkTileHierarchyLoaderBase: public vtkObject {
+private:
+    using OnNodeLoadedFunction = std::function<void(vtkTileHierarchyNodePtr&)>;
 public:
     vtkTypeMacro(vtkTileHierarchyLoaderBase, vtkObject);
     void PrintSelf(ostream& os, vtkIndent indent) override;
@@ -76,7 +78,7 @@ public:
 
     void UnloadNode(vtkTileHierarchyNodePtr& node, bool recursive);
 
-    void SetNodeLoadedCallBack(const std::function<void()>& func);
+    void SetNodeLoadedCallBack(OnNodeLoadedFunction func);
 
     vtkGetMacro(Stop, bool);
 
@@ -85,7 +87,7 @@ protected:
     ~vtkTileHierarchyLoaderBase() noexcept override;
 
     bool TryGetNodeFromCache(vtkTileHierarchyNodePtr& node);
-    void InvokeNodeLoaded() const;
+    void InvokeNodeLoaded(vtkTileHierarchyNodePtr& node) const;
 
     vtkTileHierarchyNodePtr PopNextNode();
     virtual void GetNode(vtkTileHierarchyNodePtr& node, bool recursive);
@@ -125,7 +127,7 @@ protected:
 
     std::mutex CacheMutex;
 
-    std::function<void()> Func;
+    OnNodeLoadedFunction Func;
     vtkBoundingBox BoundingBox;
 private:
     vtkTileHierarchyLoaderBase(const vtkTileHierarchyLoaderBase&) = delete;

@@ -83,6 +83,10 @@ public:
     }
 
     void ResetNode();
+
+    void SetLoading();
+
+    bool LoadRequired() const;
 protected:
     friend class vtkTileHierarchyLoaderBase;
     friend class vtkTileHierarchyMapper;
@@ -98,6 +102,7 @@ protected:
     // This is set dynamically
     std::size_t Size;
     vtkSmartPointer<vtkMapper> Mapper;
+    bool Loading;
 private:
     vtkTileHierarchyNode(const vtkTileHierarchyNode&) = delete;
     void operator=(const vtkTileHierarchyNode&) = delete;

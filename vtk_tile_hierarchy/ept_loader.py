@@ -105,7 +105,6 @@ class EptLoader(PythonHierarchyLoader):
 
         self.dtype = np.dtype({"names": field_names, "formats": field_formats})
 
-        #- np.asarray(self.offset)
         bounds = vtk.vtkBoundingBox((np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3) - np.asarray(self.offset)).T.ravel())
         self.SetBoundingBox(bounds)
 
@@ -210,8 +209,8 @@ class EptLoader(PythonHierarchyLoader):
 
     def yield_children(self, name):
         new_index = np.flip(self.string_to_index(name))
-        new_index[3] += 1 # increase depth by one
-        new_index[:3] *= 2 # multiply the rest
+        new_index[3] += 1  # increase depth by one
+        new_index[:3] *= 2  # multiply the rest
         for i in range(8):
             bits = np.unpackbits(np.uint8(i), count=4, bitorder='little')
             tmp_index = np.flip(new_index+bits)
@@ -245,44 +244,41 @@ class EptLoader(PythonHierarchyLoader):
 
         return vtk.vtkBoundingBox(min[0], max[0], min[1], max[1], min[2], max[2])
 
-    def parse_hierarchy_data(self, hierarchy_data, node: TileHierarchyNodePython, recursive=True):
+    def parse_hierarchy_data(self, node: TileHierarchyNodePython):
+        if node.size >= 0:
+            return
+
+        hierarchy_data = node["hierarchy"]
         name = node['name']
+        del node["hierarchy"]  # remove the hierarchy data as the node is expanded
         node.size = hierarchy_data[name]
-        num_nodes, num_points = 1, node.size
         for i, child in enumerate(self.yield_children(name)):
             if child in hierarchy_data:
                 child_node = TileHierarchyNodePython(bounds=self.create_child_bb(node.bounds, i),
                                                      parent=node, num_children=8, name=child)
                 node.set_child(i, child_node)
-
-                if recursive and hierarchy_data[child] < 0:
+                child_node.size = -1
+                if hierarchy_data[child] < 0:
+                    # replace the hierarchy data for this node with the new sub hierarchy
                     new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / child)
-                    num_nodes_sub, num_points_sub = self.parse_hierarchy_data(new_hierarchy_data, child_node)
+                    child_node['hierarchy'] = new_hierarchy_data
                 else:
-                    num_nodes_sub, num_points_sub = self.parse_hierarchy_data(hierarchy_data, child_node)
-                num_nodes += num_nodes_sub + 1
-                num_points += num_points_sub
-
-        return num_nodes, num_points
+                    child_node['hierarchy'] = hierarchy_data
 
     def on_initialize(self):
         if self.root_node is None:
             name = "0-0-0-0"
             self.root_node = TileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
             hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / name)
-            num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node, recursive=False)
-            print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
+            self.root_node["hierarchy"] = hierarchy_data
+            self.root_node.size = -1
         return self.root_node
 
     def on_fetch_node(self, node: TileHierarchyNodePython):
         name = node["name"]
 
         if node.size < 0:  # the hierarchy has not been parsed for this node so load it first
-            print("parsing new hierarchy")
-            new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / name)
-            #with open(self.path / "ept-hierarchy" / name + ".json", 'r') as f:
-            #    new_hierarchy_data = json.load(f)
-            self.parse_hierarchy_data(new_hierarchy_data, node, recursive=False)
+            self.parse_hierarchy_data(node)
 
         filepath = self.path / "ept-data" / name
         data = self._fetch_binary_file(filepath, dtype=self.dtype)

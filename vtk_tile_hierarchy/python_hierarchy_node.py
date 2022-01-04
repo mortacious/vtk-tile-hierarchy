@@ -69,6 +69,9 @@ class TileHierarchyNodePython(vtkTileHierarchyNode):
         return self.attributes[item]
         #return self.GetAttribute(item)
 
+    def __delitem__(self, key):
+        del self.attributes[key]
+
     def reset(self):
         self.ResetNode()
 

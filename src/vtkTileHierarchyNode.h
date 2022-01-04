@@ -40,11 +40,11 @@ public:
         BoundingBox = bbox;
     }
 
-    std::size_t GetSize() const {
+    ssize_t GetSize() const {
         return Size;
     }
 
-    void SetSize(std::size_t size) {
+    void SetSize(ssize_t size) {
         Size = size;
     }
 
@@ -100,7 +100,7 @@ protected:
     std::vector<vtkTileHierarchyNodePtr> Children;
 
     // This is set dynamically
-    std::size_t Size;
+    ssize_t Size;
     vtkSmartPointer<vtkMapper> Mapper;
     bool Loading;
 private:

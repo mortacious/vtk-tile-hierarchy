@@ -15,7 +15,7 @@ set(VTK_COMPONENTS
         RenderingOpenGL2)
 
 # VTK dependency
-find_package(VTK 9.0 REQUIRED
+find_package(VTK 9 REQUIRED
         COMPONENTS
         ${VTK_COMPONENTS}
         )

@@ -91,7 +91,8 @@ void vtkTileHierarchyMapper::PrintSelf(ostream &os, vtkIndent indent) {
     this->Superclass::PrintSelf(os, indent);
 }
 
-void vtkTileHierarchyMapper::OnNodeLoaded() {
+void vtkTileHierarchyMapper::OnNodeLoaded(vtkTileHierarchyNodePtr& node) {
+    node->Mapper->Update
     ForceUpdate = true;
 }
 

@@ -15,7 +15,6 @@
 class vtkRenderer;
 class vtkActor;
 class vtkWindow;
-class vtkCamera;
 class vtkTileHierarchyLoaderBase;
 class vtkExtractSelectedFrustum;
 class vtkTileHierarchyNode;
@@ -68,7 +67,7 @@ protected:
      */
     void ComputeBounds();
 
-    void OnNodeLoaded();
+    void OnNodeLoaded(vtkTileHierarchyNodePtr& node);
 
     /**
      * Calculate the priority of displaying a node

@@ -18,7 +18,7 @@ size_t vtkTileHierarchyLoaderBase::TileTreeNodeSize::operator()(const vtkTileHie
 }
 
 vtkTileHierarchyLoaderBase::vtkTileHierarchyLoaderBase()
-    : Initialized(false), Stop(true), MaxInQueue(10), Cache(15000000){}
+    : Initialized(false), Stop(true), MaxInQueue(2), Cache(15000000){}
 
 vtkTileHierarchyLoaderBase::~vtkTileHierarchyLoaderBase() noexcept {
     vtkTileHierarchyLoaderBase::Shutdown();

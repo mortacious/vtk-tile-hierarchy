@@ -7,7 +7,7 @@ import vtk
 from vtk.util.numpy_support import numpy_to_vtk
 from itertools import tee
 import urllib.parse as urlparse
-
+import gzip
 
 _type_to_numpy_kind = {
     'unsigned': 'u',
@@ -21,6 +21,7 @@ _scale_index = {
     'Z': 2
 }
 
+
 def pairwise(iterable):
     # pairwise('ABCDEFG') --> AB BC CD DE EF FG
     a, b = tee(iterable)
@@ -30,6 +31,18 @@ def pairwise(iterable):
 
 def to_numpy_dtype(type, size):
     return np.dtype(_type_to_numpy_kind[str(type)] + str(size))
+
+
+def replace_fields(names, formats, replace, replacement):
+    indices = [names.index(r) for r in replace]
+    for i, j in pairwise(indices):
+        if j != i+1:
+            raise ValueError("Invalid binary format")
+    names[indices[0]] = replacement
+    formats[indices[0]] = (formats[indices[0]], len(indices))
+    del names[indices[1]:indices[-1]+1]
+    del formats[indices[1]:indices[-1]+1]
+    return names, formats
 
 
 class EptLoader(PythonHierarchyLoader):
@@ -49,13 +62,26 @@ class EptLoader(PythonHierarchyLoader):
         self.path = Path(path).parent
 
         self.root_node = None
-        schema = self._fetch_json_file(path)
-        if schema['dataType'] != 'binary':
-            raise ValueError("Only binary format supported")
-        if schema['hierarchyType'] != 'json':
-            raise ValueError("Only json format supported")
-        self.npoints = schema['points']
-        self.span = schema['span']
+        schema = self._fetch_json_file(path, add_extension=False)
+        if schema['dataType'] == 'binary':
+            self.binary_file_extension = '.bin'
+        elif schema['dataType'] == 'laszip':
+            self.binary_file_extension = '.laz'
+        else:
+            raise ValueError(f"Unsupported dataType {schema['dataType']}")
+
+        if schema['hierarchyType'] == 'json':
+            self.json_file_extension = '.json'
+        elif schema['hierarchyType'] == 'gzip':
+            self.json_file_extension = '.json.gz'
+        else:
+            raise ValueError(f"Unsupported hierarchyType {schema['hierarchyType']}")
+
+        try:
+            self.npoints = schema['points']
+        except KeyError:
+            self.npoints = schema['numPoints']
+        self.span = schema.get('span', 256)
         self.scale = [1.0, 1.0, 1.0]
         self.offset = [0.0, 0.0, 0.0]
         field_names = []
@@ -74,65 +100,100 @@ class EptLoader(PythonHierarchyLoader):
             field_names.append(name)
             field_formats.append(to_numpy_dtype(dim['type'], dim['size']))
 
-        def replace_fields(names, formats, replace, replacement):
-            indices = [names.index(r) for r in replace]
-            for i, j in pairwise(indices):
-                if j != i+1:
-                    raise ValueError("Invalid binary format")
-            names[indices[0]] = replacement
-            formats[indices[0]] = (formats[indices[0]], len(indices))
-            del names[indices[1]:indices[-1]+1]
-            del formats[indices[1]:indices[-1]+1]
-            return names, formats
-
         field_names, field_formats = replace_fields(field_names, field_formats, ["X", "Y", "Z"], "Position")
         field_names, field_formats = replace_fields(field_names, field_formats, ["Red", "Green", "Blue"], "Color")
 
         self.dtype = np.dtype({"names": field_names, "formats": field_formats})
 
+        #- np.asarray(self.offset)
         bounds = vtk.vtkBoundingBox((np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3) - np.asarray(self.offset)).T.ravel())
         self.SetBoundingBox(bounds)
 
     def _fetch_pycurl(self, path):
         import pycurl
+        import certifi
         from io import BytesIO
-        url = self.url._replace(path=path).get_url()
+        path = str(path)
+        url = self.url._replace(path=path).geturl()
         buffer = BytesIO()
         c = pycurl.Curl()
         c.setopt(c.URL, url)
         c.setopt(c.NOPROGRESS, 1)
         c.setopt(c.FAILONERROR, True)
         c.setopt(c.WRITEDATA, buffer)
+        c.setopt(c.CAINFO, certifi.where())
         c.perform()
         c.close()
-        return buffer.getvalue()
+        buffer.seek(0)
+        return buffer
 
-    def _fetch_json_file(self, path):
+    def _fetch_json_file(self, path, add_extension=True):
         """
 
         :param path:
         :return:
         """
-        if self.url.scheme == '':
-            # local file
-            with open(path, 'r') as f:
-                return json.load(f)
+        path = Path(path)
+        if add_extension:
+            path = path.with_suffix(self.json_file_extension)
+            extension = self.json_file_extension
         else:
-            return json.loads(self._fetch_pycurl(path))
-
-    def _fetch_binary_file(self, path, dtype):
-        """
-
-        :param path:
-        :param dtype:
-        :return:
-        """
-
+            extension = '.json'
         if self.url.scheme == '':
-            return np.fromfile(path, dtype=dtype)
+            if extension == '.json':
+                # local file
+                with open(path, 'r') as f:
+                    return json.load(f)
+            else:
+                with gzip.open(path, 'r') as f:
+                    return json.load(f)
         else:
-            bin_string = self._fetch_pycurl(path)
-            return np.frombuffer(bin_string, dtype)
+            buffer = self._fetch_pycurl(path)
+            data = buffer.getvalue()
+            if add_extension and extension == '.json.gz':
+                data = gzip.decompress(data)
+            return json.loads(data)
+
+    def _process_lasdata(self, lasdata):
+        dtype = lasdata.points.array.dtype
+        names = list(dtype.names)
+        formats = [d[1] for d in dtype.descr]
+
+        names, formats = replace_fields(names, formats, ["X", "Y", "Z"], "Position")
+        names, formats = replace_fields(names, formats, ["red", "green", "blue"], "Color")
+        dtype = np.dtype({"names": names, "formats": formats})
+
+        data = lasdata.points.array
+        data = data.view(dtype)
+        return data
+
+    def _fetch_binary_file(self, path, dtype=None, add_extension=True):
+            """
+
+            :param path:
+            :param dtype:
+            :return:
+            """
+            path = Path(path)
+            if add_extension:
+                path = path.with_suffix(self.binary_file_extension)
+            if self.url.scheme == '':
+                if self.binary_file_extension == '.bin':
+                    return np.fromfile(path, dtype=dtype)
+                else:
+                    import laspy
+                    lasdata = laspy.read(path)
+                    return self._process_lasdata(lasdata)
+            else:
+                buffer = self._fetch_pycurl(path)
+                if self.binary_file_extension == '.bin':
+                    bin_string = buffer.getvalue()
+                    return np.frombuffer(bin_string, dtype)
+                else:
+                    import laspy
+                    lasdata = laspy.read(buffer, laz_backend=laspy.LazBackend.Lazrs)
+                    return self._process_lasdata(lasdata)
+
 
     @staticmethod
     def is_valid(path: Path):
@@ -195,9 +256,7 @@ class EptLoader(PythonHierarchyLoader):
                 node.set_child(i, child_node)
 
                 if recursive and hierarchy_data[child] < 0:
-                    new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / child + ".json")
-                    #with open(self.path / "ept-hierarchy" / child + ".json", 'r') as f:
-                    #    new_hierarchy_data = json.load(f)
+                    new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / child)
                     num_nodes_sub, num_points_sub = self.parse_hierarchy_data(new_hierarchy_data, child_node)
                 else:
                     num_nodes_sub, num_points_sub = self.parse_hierarchy_data(hierarchy_data, child_node)
@@ -210,9 +269,7 @@ class EptLoader(PythonHierarchyLoader):
         if self.root_node is None:
             name = "0-0-0-0"
             self.root_node = TileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
-            hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / (name + ".json"))
-            #with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
-            #    hierarchy_data = json.load(f)
+            hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / name)
             num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node, recursive=False)
             print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
         return self.root_node
@@ -222,16 +279,20 @@ class EptLoader(PythonHierarchyLoader):
 
         if node.size < 0:  # the hierarchy has not been parsed for this node so load it first
             print("parsing new hierarchy")
-            new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / name + ".json")
+            new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / name)
             #with open(self.path / "ept-hierarchy" / name + ".json", 'r') as f:
             #    new_hierarchy_data = json.load(f)
             self.parse_hierarchy_data(new_hierarchy_data, node, recursive=False)
 
-        filepath = self.path / "ept-data" / (name + ".bin")
-        data = self._fetch_binary_file(filepath, self.dtype)
-        #data = np.fromfile(filepath, dtype=self.dtype)
+        filepath = self.path / "ept-data" / name
+        data = self._fetch_binary_file(filepath, dtype=self.dtype)
         positions = (data["Position"] * self.scale).astype(np.float32)# - self.offset
-        colors = (data["Color"] // 256).astype(np.uint8)
+        colors = data["Color"]
+        color_max = np.max(colors)
+        if color_max > 256:
+            colors //= 256
+        colors = colors.astype(np.uint8)
+
         del data
         if positions.shape[0] != colors.shape[0] or positions.shape[0] != node.size:
             node.reset()
@@ -250,4 +311,5 @@ class EptLoader(PythonHierarchyLoader):
         mapper.SetScalarModeToUsePointData()
         mapper.SetScaleFactor(0)  # Render just points
         mapper.SetInputDataObject(polydata)
+        mapper.Update()
         return mapper

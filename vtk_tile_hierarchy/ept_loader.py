@@ -6,6 +6,7 @@ import numpy as np
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk
 from itertools import tee
+import urllib.parse as urlparse
 
 
 _type_to_numpy_kind = {
@@ -34,14 +35,21 @@ def to_numpy_dtype(type, size):
 class EptLoader(PythonHierarchyLoader):
     def __init__(self, path):
         super().__init__()
-        print(path)
+
+        self.url = urlparse.urlparse(path)
+        if self.url.scheme != '':
+            try:
+                import pycurl
+            except ImportError:
+                raise ValueError("Remote datasets require the 'pycurl' library to be installed")
+
+        path = self.url.path
         if not self.is_valid(path):
             raise ValueError("Path does not contain an EPT dataset")
         self.path = Path(path).parent
 
         self.root_node = None
-        with open(path, 'r') as f:
-            schema = json.load(f)
+        schema = self._fetch_json_file(path)
         if schema['dataType'] != 'binary':
             raise ValueError("Only binary format supported")
         if schema['hierarchyType'] != 'json':
@@ -85,6 +93,46 @@ class EptLoader(PythonHierarchyLoader):
         bounds = vtk.vtkBoundingBox((np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3) - np.asarray(self.offset)).T.ravel())
         self.SetBoundingBox(bounds)
 
+    def _fetch_pycurl(self, path):
+        import pycurl
+        from io import BytesIO
+        url = self.url._replace(path=path).get_url()
+        buffer = BytesIO()
+        c = pycurl.Curl()
+        c.setopt(c.URL, url)
+        c.setopt(c.NOPROGRESS, 1)
+        c.setopt(c.FAILONERROR, True)
+        c.setopt(c.WRITEDATA, buffer)
+        c.perform()
+        c.close()
+        return buffer.getvalue()
+
+    def _fetch_json_file(self, path):
+        """
+
+        :param path:
+        :return:
+        """
+        if self.url.scheme == '':
+            # local file
+            with open(path, 'r') as f:
+                return json.load(f)
+        else:
+            return json.loads(self._fetch_pycurl(path))
+
+    def _fetch_binary_file(self, path, dtype):
+        """
+
+        :param path:
+        :param dtype:
+        :return:
+        """
+
+        if self.url.scheme == '':
+            return np.fromfile(path, dtype=dtype)
+        else:
+            bin_string = self._fetch_pycurl(path)
+            return np.frombuffer(bin_string, dtype)
 
     @staticmethod
     def is_valid(path: Path):
@@ -143,12 +191,13 @@ class EptLoader(PythonHierarchyLoader):
         for i, child in enumerate(self.yield_children(name)):
             if child in hierarchy_data:
                 child_node = TileHierarchyNodePython(bounds=self.create_child_bb(node.bounds, i),
-                                                        parent=node, num_children=8, name=child)
+                                                     parent=node, num_children=8, name=child)
                 node.set_child(i, child_node)
 
                 if recursive and hierarchy_data[child] < 0:
-                    with open(self.path / "ept-hierarchy" / child + ".json", 'r') as f:
-                        new_hierarchy_data = json.load(f)
+                    new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / child + ".json")
+                    #with open(self.path / "ept-hierarchy" / child + ".json", 'r') as f:
+                    #    new_hierarchy_data = json.load(f)
                     num_nodes_sub, num_points_sub = self.parse_hierarchy_data(new_hierarchy_data, child_node)
                 else:
                     num_nodes_sub, num_points_sub = self.parse_hierarchy_data(hierarchy_data, child_node)
@@ -161,8 +210,9 @@ class EptLoader(PythonHierarchyLoader):
         if self.root_node is None:
             name = "0-0-0-0"
             self.root_node = TileHierarchyNodePython(bounds=self.GetBoundingBox(), num_children=8, name=name)
-            with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
-                hierarchy_data = json.load(f)
+            hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / (name + ".json"))
+            #with open(self.path / "ept-hierarchy" / (name + ".json"), 'r') as f:
+            #    hierarchy_data = json.load(f)
             num_nodes, num_points = self.parse_hierarchy_data(hierarchy_data, self.root_node, recursive=False)
             print(f"Loaded a total of {num_nodes} with a total of {num_points} points.")
         return self.root_node
@@ -172,12 +222,14 @@ class EptLoader(PythonHierarchyLoader):
 
         if node.size < 0:  # the hierarchy has not been parsed for this node so load it first
             print("parsing new hierarchy")
-            with open(self.path / "ept-hierarchy" / name + ".json", 'r') as f:
-                new_hierarchy_data = json.load(f)
+            new_hierarchy_data = self._fetch_json_file(self.path / "ept-hierarchy" / name + ".json")
+            #with open(self.path / "ept-hierarchy" / name + ".json", 'r') as f:
+            #    new_hierarchy_data = json.load(f)
             self.parse_hierarchy_data(new_hierarchy_data, node, recursive=False)
 
         filepath = self.path / "ept-data" / (name + ".bin")
-        data = np.fromfile(filepath, dtype=self.dtype)
+        data = self._fetch_binary_file(filepath, self.dtype)
+        #data = np.fromfile(filepath, dtype=self.dtype)
         positions = (data["Position"] * self.scale).astype(np.float32)# - self.offset
         colors = (data["Color"] // 256).astype(np.uint8)
         del data

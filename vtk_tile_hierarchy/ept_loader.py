@@ -105,7 +105,7 @@ class EptLoader(PythonHierarchyLoader):
 
         self.dtype = np.dtype({"names": field_names, "formats": field_formats})
 
-        bounds = vtk.vtkBoundingBox((np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3) - np.asarray(self.offset)).T.ravel())
+        bounds = vtk.vtkBoundingBox((np.asarray(schema['bounds'], dtype=np.double).reshape(2, 3)- np.asarray(self.offset)).T.ravel())
         self.SetBoundingBox(bounds)
 
     def _fetch_pycurl(self, path):
@@ -190,7 +190,7 @@ class EptLoader(PythonHierarchyLoader):
                     return np.frombuffer(bin_string, dtype)
                 else:
                     import laspy
-                    lasdata = laspy.read(buffer, laz_backend=laspy.LazBackend.Lazrs)
+                    lasdata = laspy.read(buffer)
                     return self._process_lasdata(lasdata)
 
 
@@ -282,7 +282,7 @@ class EptLoader(PythonHierarchyLoader):
 
         filepath = self.path / "ept-data" / name
         data = self._fetch_binary_file(filepath, dtype=self.dtype)
-        positions = (data["Position"] * self.scale).astype(np.float32)# - self.offset
+        positions = (data["Position"] * self.scale).astype(np.float32)# + self.offset
         colors = data["Color"]
         color_max = np.max(colors)
         if color_max > 256:

@@ -20,12 +20,14 @@
 
 #include <queue>
 #include <tuple>
+#include <vtkWrappingHints.h>
+
 
 template<class T, class P>
 class PriorityQueue
 {
 public:
-    using Element = std::tuple<T, P>;
+    using Element = std::pair<T, P>;
 
     void push(const T& item, const P& priority)
     {

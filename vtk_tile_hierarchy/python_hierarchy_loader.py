@@ -44,14 +44,6 @@ class PythonHierarchyLoader(vtkPythonLoaderBase, ABC):
         if self._threads is not None:
             self._init_threads()
 
-    @property
-    def max_in_queue(self):
-        return self.GetMaxInQueue()
-
-    @max_in_queue.setter
-    def max_in_queue(self, miq):
-        self.SetMaxInQueue(miq)
-
     @abstractmethod
     def on_initialize(self):
         """

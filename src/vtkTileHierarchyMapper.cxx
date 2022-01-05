@@ -123,6 +123,7 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
         return; // Do not render very small screens
     }
     InitFrustum(ren);
+    Loader->UnscheduleAll();
     PriorityQueue<vtkTileHierarchyNodePtr , float> process_queue;
     auto root_node = Loader->GetRootNode();
     process_queue.push(root_node, 0);
@@ -130,9 +131,8 @@ void vtkTileHierarchyMapper::Render(vtkRenderer *ren, vtkActor *a) {
     double bounds[6];
 
     while(!process_queue.empty()) {
-        auto element = process_queue.top();
-        auto node = std::get<0>(element);
-        auto node_prio = std::get<1>(element);
+        auto node = process_queue.top().first;
+        auto node_prio = process_queue.top().second;
         process_queue.pop();
 
         node->GetBoundingBox().GetBounds(bounds);

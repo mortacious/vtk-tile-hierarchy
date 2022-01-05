@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <mutex>
+#include <vtkWrappingHints.h>
 
 
 using namespace std;

@@ -18,7 +18,7 @@ size_t vtkTileHierarchyLoaderBase::TileTreeNodeSize::operator()(const vtkTileHie
 }
 
 vtkTileHierarchyLoaderBase::vtkTileHierarchyLoaderBase()
-    : Initialized(false), Stop(true), MaxInQueue(2), Cache(15000000){}
+    : Initialized(false), Stop(true), Cache(15000000){}
 
 vtkTileHierarchyLoaderBase::~vtkTileHierarchyLoaderBase() noexcept {
     vtkTileHierarchyLoaderBase::Shutdown();
@@ -57,11 +57,7 @@ void vtkTileHierarchyLoaderBase::ScheduleForLoading(vtkTileHierarchyNodePtr &nod
         InvokeNodeLoaded(node);
     } else {
         std::lock_guard<std::mutex> lock{Mutex};
-
-        NeedToLoad.push(std::make_pair(node, priority));
-        while(NeedToLoad.size() > MaxInQueue) {
-            NeedToLoad.popMin(); // Remove the smallest Element
-        }
+        NeedToLoad.push(node, priority);
         Cond.notify_one();
     }
 }
@@ -78,8 +74,8 @@ vtkTileHierarchyNodePtr vtkTileHierarchyLoaderBase::PopNextNode() {
             lock.unlock();
             break;
         }
-
-        node = NeedToLoad.popMax().first;
+        node = NeedToLoad.top().first;
+        NeedToLoad.pop();
 
         if (node->IsLoaded()) {
             continue; // skip already loaded nodes

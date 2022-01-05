@@ -33,8 +33,9 @@
 
 #pragma once
 #include <Python.h>
+#include <vtkWrappingHints.h>
 
-class gil_scoped_release {
+VTK_WRAPEXCLUDE class gil_scoped_release {
 public:
     explicit gil_scoped_release()  {
         // `get_internals()` must be called here unconditionally in order to initialize

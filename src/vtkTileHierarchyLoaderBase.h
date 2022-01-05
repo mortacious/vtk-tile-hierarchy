@@ -12,8 +12,8 @@
 #include <mutex>
 #include <functional>
 #include <condition_variable>
-#include "minMaxHeap.h"
 #include "lruCache.h"
+#include "priorityQueue.h"
 #include "vtkTileHierarchyModule.h" // For export macro
 
 class vtkMapper;
@@ -55,9 +55,6 @@ public:
 
     virtual void PostRender(std::unique_ptr<vtkTileHierarchyLoaderRenderState> state) {
     };
-
-    vtkGetMacro(MaxInQueue, unsigned int);
-    vtkSetMacro(MaxInQueue, unsigned int);
 
     vtkGetMacro(Initialized, bool);
 
@@ -103,18 +100,7 @@ protected:
     mutable std::mutex Mutex;
     std::condition_variable Cond;
 
-    using HeapElement = std::pair<vtkTileHierarchyNodePtr, float>;
-
-    struct Compare
-    {
-        bool operator()(const HeapElement& e1, const HeapElement& e2) const
-        {
-            return e1.second < e2.second;
-        }
-    };
-    minmax::MinMaxHeap<HeapElement, std::vector<HeapElement>, Compare> NeedToLoad;
-
-    unsigned int MaxInQueue;
+    PriorityQueue<vtkTileHierarchyNodePtr , float> NeedToLoad;
 
     vtkTileHierarchyNodePtr RootNode;
 

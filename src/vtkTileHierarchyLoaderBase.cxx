@@ -46,9 +46,7 @@ void vtkTileHierarchyLoaderBase::Shutdown() {
 
 void vtkTileHierarchyLoaderBase::UnscheduleAll() {
     std::lock_guard<std::mutex> lock{Mutex};
-    while(!NeedToLoad.empty()) {
-        NeedToLoad.pop();
-    }
+    NeedToLoad.clear();
 }
 
 void vtkTileHierarchyLoaderBase::ScheduleForLoading(vtkTileHierarchyNodePtr &node, float priority) {

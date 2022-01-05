@@ -17,13 +17,18 @@ set(additional_srcs
 
 set(additional_headers
         lruCache.h
-        minMaxHeap.h
         priorityQueue.h)
+
+set(HEADER_SPECIFIER NOWRAP_HEADERS)
+if(${VTK_VERSION} VERSION_LESS 9.1)
+    # vtk 9.0.x has a different name for this
+    set(HEADER_SPECIFIER PRIVATE_HEADERS)
+endif()
 
 vtk_module_add_module(vtkTileHierarchy
         CLASSES ${classes}
         SOURCES ${additional_srcs}
-        HEADERS ${additional_headers})
+        ${HEADER_SPECIFIER} ${additional_headers})
 
 vtk_module_link(vtkTileHierarchy
         PUBLIC ${JsonCpp_LIBRARIES} ${CURL_LIBRARIES})

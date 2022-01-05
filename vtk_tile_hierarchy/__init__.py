@@ -2,3 +2,4 @@ from .vtkTileHierarchy import vtkPotreeLoader, vtkTileHierarchyNode, vtkPointHie
 from .python_hierarchy_loader import PythonHierarchyLoader
 from .python_hierarchy_node import TileHierarchyNodePython
 from .ept_loader import EptLoader
+from .interactor_style_pivot import InteractorStylePivot
